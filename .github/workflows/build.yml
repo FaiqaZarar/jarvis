@@ -1,0 +1,413 @@
+name: Build desktop app
+
+# Real production build for the packaged desktop app, on both platforms
+# it targets. The macOS job's Homebrew-Python-venv setup is the fix
+# confirmed working during the packaging investigation
+# (docs/mac-packaging-investigation.yml): python.org's official macOS
+# CPython build (what actions/setup-python installs) has no
+# sqlite3.Connection.enable_load_extension() at all, which sqlite-vec
+# requires; Homebrew's own Python has it enabled, confirmed directly
+# with a real vec0.dylib load, a real KNN query, real FTS5, and (checked
+# separately, not assumed) numba/llvmlite/PySide6 all working under it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: Which platforms to build (Windows + Mac also builds Linux)
+        type: choice
+        options:
+          - Build Mac
+          - Build Windows + Mac
+        default: Build Mac
+
+concurrency:
+  # Confirmed real race, not hypothetical: two PRs merged to main about a
+  # minute apart each triggered their own run of this workflow, and both
+  # passed compute-tag's collision check (which runs in seconds, right at
+  # the start) before either run had actually pushed its date-stamped tag -
+  # that push only happens in create-release, after the ~2-8 minute
+  # platform builds finish. The second run's "git push origin <tag>" then
+  # failed outright ("tag already exists"), skipping both installer-attach
+  # jobs. Serializing whole workflow runs (not cancelling the one already
+  # in progress) closes this for good: a second run's compute-tag then
+  # sees the first run's real, already-pushed tag.
+  group: build-desktop-app-release
+  cancel-in-progress: false
+
+env:
+  # Where releases are published, and what the in-app updater
+  # (jarvis.modules.desktop_app.update_checker) polls. Keep this in sync with
+  # update_checker.py's own _RELEASES_REPO constant; nothing enforces the two
+  # match automatically.
+  RELEASES_REPO: FaiqaZarar/jarvis
+
+jobs:
+  compute-tag:
+    # Runs first so both build-macos (to embed the tag into the binary -
+    # see its own VERSION-writing step) and create-release (to publish
+    # under it) use the exact same value - no drift between what's
+    # embedded and what's actually released.
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Pick a release tag
+        id: tag
+        # Checked against two independent collision sources, not just
+        # one: a release already published under this tag in the public
+        # releases repo (the thing this check originally covered), AND a
+        # git tag already existing in THIS repo - the "Tag this commit"
+        # step below pushes one here regardless of where the release
+        # itself lives, and this repo already has real desktop-build-*
+        # tag history from every run before that step existed (confirmed
+        # directly: desktop-build-2026-09-23 already existed here from an
+        # earlier run today, causing exactly this collision on the first
+        # real run of the new logic - the public-repo-only check had no
+        # way to see it, since the public repo had zero releases yet).
+        run: |
+          set -e
+          date_tag="desktop-build-$(date -u +%Y-%m-%d)"
+          collision=false
+          if GH_TOKEN="$RELEASES_REPO_TOKEN" gh release view "$date_tag" --repo "$RELEASES_REPO" >/dev/null 2>&1; then
+            collision=true
+          fi
+          if GH_TOKEN="$GITHUB_TOKEN" gh api "repos/${{ github.repository }}/git/ref/tags/$date_tag" >/dev/null 2>&1; then
+            collision=true
+          fi
+          if [ "$collision" = true ]; then
+            echo "tag=${date_tag}-run${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$date_tag" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+
+  build-windows:
+    # Runs only when the manual dispatch picks "Build Windows + Mac" - takes
+    # ~8 minutes vs. ~2 for macOS, but create-release only needs build-macos
+    # (below), so the slower Windows build never holds up the Mac release.
+    # attach-windows-installer separately needs both create-release and
+    # this job - GitHub Actions' own needs: semantics already make it wait
+    # for however long this one takes and then attach the installer to
+    # the release that's already live, exactly the "take its time, then
+    # reattach" behavior asked for - nothing new to build for that part.
+    # Picking "Build Mac" alone skips this (e.g. a quick Mac-only test run).
+    # continue-on-error: still true - a Windows failure must never fail
+    # the whole workflow or block the Mac release that already shipped.
+    if: github.event.inputs.build_target == 'Build Windows + Mac'
+    needs: [compute-tag]
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ./jarvis/server
+          pip install pyinstaller
+
+      - name: Write embedded VERSION file
+        # Same reasoning as build-macos's identical step - jarvis.modules.
+        # desktop_app.version reads this back from sys._MEIPASS at
+        # runtime (jarvis_desktop.spec's own datas entry), and
+        # update_checker.py needs a real current-version value to check
+        # against at all (None skips update-checking entirely). This was
+        # missing here before, which meant a packaged Windows build could
+        # never check for updates in the first place, on top of
+        # update_checker.py only ever matching a .dmg asset name.
+        working-directory: packaging
+        run: '[System.IO.File]::WriteAllText("VERSION", "${{ needs.compute-tag.outputs.tag }}")'
+
+      - name: Bake in the shared Google Drive OAuth client, embedding key and PostHog key
+        # Overwrites the checked-in placeholder (jarvis_server/internal/
+        # _bundled_credentials.py, always empty) with the real shared
+        # client id/secret and a shared embedding API key - see
+        # env_config.py for why this exists (lets every tester connect
+        # Drive and search without hand-editing their own .env; the
+        # embedding key is a test-phase-only convenience, not a
+        # permanent arrangement). Passed via env, not interpolated
+        # directly into the script, so a secret's value can't affect how
+        # the script parses.
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          BUNDLED_EMBEDDING_API_KEY: ${{ secrets.BUNDLED_EMBEDDING_API_KEY }}
+          POSTHOG_PROJECT_KEY: ${{ secrets.POSTHOG_PROJECT_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          CLOUD_BASE_URL: ${{ secrets.CLOUD_BASE_URL }}
+        run: python -c "import os; open('jarvis/server/jarvis_server/internal/_bundled_credentials.py', 'w').write('BUNDLED_GOOGLE_OAUTH_CLIENT_ID = %r\nBUNDLED_GOOGLE_OAUTH_CLIENT_SECRET = %r\nBUNDLED_EMBEDDING_API_KEY = %r\nBUNDLED_POSTHOG_PROJECT_KEY = %r\nBUNDLED_POSTHOG_HOST = %r\nBUNDLED_CLOUD_BASE_URL = %r\n' % (os.environ['GOOGLE_OAUTH_CLIENT_ID'], os.environ['GOOGLE_OAUTH_CLIENT_SECRET'], os.environ['BUNDLED_EMBEDDING_API_KEY'], os.environ.get('POSTHOG_PROJECT_KEY', ''), os.environ.get('POSTHOG_HOST', ''), os.environ.get('CLOUD_BASE_URL', '')))"
+
+      - name: Build with PyInstaller
+        working-directory: packaging
+        run: pyinstaller --noconfirm jarvis_desktop.spec
+
+      - name: Package jarvis_desktop into a Windows installer
+        # Inno Setup 6 ships preinstalled on windows-latest runners - no
+        # extra install needed, same reasoning as macOS's hdiutil for
+        # the .dmg (see the build-macos job below).
+        working-directory: packaging
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.1.${{ github.run_number }} jarvis_installer.iss'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jarvis_desktop-windows
+          path: packaging/dist/JarvisSetup.exe
+          if-no-files-found: error
+          # Purely a hand-off to create-release/attach-windows-installer
+          # within this same run (minutes later) - the real installer
+          # lives in the public releases repo once that's done. Confirmed
+          # real cost: 111 of these had piled up (~21GB, no retention-days
+          # set anywhere in this file) since nothing ever expired them
+          # before the default 90-day window.
+          retention-days: 1
+
+  build-linux:
+    # Best-effort like build-windows: continue-on-error so a Linux failure
+    # never blocks the Mac release. Built on 22.04, not ubuntu-latest, so
+    # the bundled binaries link against an older glibc and the .deb
+    # installs on 22.04+ rather than only the newest distros.
+    if: github.event.inputs.build_target == 'Build Windows + Mac'
+    needs: [compute-tag]
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ./jarvis/server
+          pip install pyinstaller
+
+      - name: Write embedded VERSION file
+        # Same as the macOS/Windows jobs - see build-macos's comment.
+        working-directory: packaging
+        run: echo -n "${{ needs.compute-tag.outputs.tag }}" > VERSION
+
+      - name: Bake in the shared Google Drive OAuth client, embedding key and PostHog key
+        # Same as the Windows job's identical step - see its comment.
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          BUNDLED_EMBEDDING_API_KEY: ${{ secrets.BUNDLED_EMBEDDING_API_KEY }}
+          POSTHOG_PROJECT_KEY: ${{ secrets.POSTHOG_PROJECT_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          CLOUD_BASE_URL: ${{ secrets.CLOUD_BASE_URL }}
+        run: python3 -c "import os; open('jarvis/server/jarvis_server/internal/_bundled_credentials.py', 'w').write('BUNDLED_GOOGLE_OAUTH_CLIENT_ID = %r\nBUNDLED_GOOGLE_OAUTH_CLIENT_SECRET = %r\nBUNDLED_EMBEDDING_API_KEY = %r\nBUNDLED_POSTHOG_PROJECT_KEY = %r\nBUNDLED_POSTHOG_HOST = %r\nBUNDLED_CLOUD_BASE_URL = %r\n' % (os.environ['GOOGLE_OAUTH_CLIENT_ID'], os.environ['GOOGLE_OAUTH_CLIENT_SECRET'], os.environ['BUNDLED_EMBEDDING_API_KEY'], os.environ.get('POSTHOG_PROJECT_KEY', ''), os.environ.get('POSTHOG_HOST', ''), os.environ.get('CLOUD_BASE_URL', '')))"
+
+      - name: Build with PyInstaller
+        working-directory: packaging
+        run: pyinstaller --noconfirm jarvis_desktop_linux.spec
+
+      - name: Package into a .deb
+        working-directory: packaging
+        run: ./package_deb.sh "${{ needs.compute-tag.outputs.tag }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jarvis_desktop-linux
+          path: packaging/dist/Jarvis.deb
+          if-no-files-found: error
+          retention-days: 1  # see build-windows' own upload step for why
+
+  build-macos:
+    needs: [compute-tag]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Homebrew's python@3.13 (confirmed fix for the sqlite3 enable_load_extension gap - see docs/mac-packaging-investigation.yml)
+        run: |
+          brew install python@3.13
+          /opt/homebrew/opt/python@3.13/bin/python3.13 -m venv /tmp/build_venv
+
+      - name: Install dependencies into the Homebrew venv (PEP 668 - Homebrew Python is externally managed)
+        run: |
+          /tmp/build_venv/bin/pip install --upgrade pip
+          /tmp/build_venv/bin/pip install -r requirements.txt
+          /tmp/build_venv/bin/pip install -e ./jarvis/server
+          /tmp/build_venv/bin/pip install pyinstaller
+
+      - name: Write embedded VERSION file
+        # jarvis.modules.desktop_app.version reads this back from
+        # sys._MEIPASS at runtime (jarvis_desktop_mac.spec's own datas
+        # entry) - the exact tag compute-tag picked, so the running app
+        # always knows the literal tag its own build was published under.
+        working-directory: packaging
+        run: echo -n "${{ needs.compute-tag.outputs.tag }}" > VERSION
+
+      - name: Bake in the shared Google Drive OAuth client, embedding key and PostHog key
+        # Same as the Windows job's identical step - see its comment.
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          BUNDLED_EMBEDDING_API_KEY: ${{ secrets.BUNDLED_EMBEDDING_API_KEY }}
+          POSTHOG_PROJECT_KEY: ${{ secrets.POSTHOG_PROJECT_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          CLOUD_BASE_URL: ${{ secrets.CLOUD_BASE_URL }}
+        run: python3 -c "import os; open('jarvis/server/jarvis_server/internal/_bundled_credentials.py', 'w').write('BUNDLED_GOOGLE_OAUTH_CLIENT_ID = %r\nBUNDLED_GOOGLE_OAUTH_CLIENT_SECRET = %r\nBUNDLED_EMBEDDING_API_KEY = %r\nBUNDLED_POSTHOG_PROJECT_KEY = %r\nBUNDLED_POSTHOG_HOST = %r\nBUNDLED_CLOUD_BASE_URL = %r\n' % (os.environ['GOOGLE_OAUTH_CLIENT_ID'], os.environ['GOOGLE_OAUTH_CLIENT_SECRET'], os.environ['BUNDLED_EMBEDDING_API_KEY'], os.environ.get('POSTHOG_PROJECT_KEY', ''), os.environ.get('POSTHOG_HOST', ''), os.environ.get('CLOUD_BASE_URL', '')))"
+
+      - name: Build with PyInstaller
+        working-directory: packaging
+        run: /tmp/build_venv/bin/pyinstaller --noconfirm jarvis_desktop_mac.spec
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Package Jarvis.app into a .dmg
+        # create-dmg drives Finder over AppleScript to lay out the icon
+        # view (background image, icon positions, window size) - plain
+        # hdiutil can only stage files, it has no equivalent. Icon
+        # positions here must match dmg_background.png's baked-in arrow
+        # (see packaging/assets/src/README.md to regenerate it).
+        working-directory: packaging
+        run: |
+          create-dmg \
+            --volname "Jarvis" \
+            --volicon "assets/icon.icns" \
+            --background "assets/dmg_background.png" \
+            --window-size 660 400 \
+            --icon-size 128 \
+            --icon "Jarvis.app" 180 170 \
+            --hide-extension "Jarvis.app" \
+            --app-drop-link 480 170 \
+            --no-internet-enable \
+            dist/Jarvis.dmg \
+            dist/Jarvis.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jarvis_desktop-macos
+          path: packaging/dist/Jarvis.dmg
+          if-no-files-found: error
+          retention-days: 1  # see build-windows' own upload step for why
+
+  create-release:
+    # Gated on macOS only - most of us are on Mac, and Windows packaging
+    # (~8 min) is far slower than macOS (~2 min). Waiting on Windows here
+    # would hold up every release for a platform most devs don't run.
+    # The Windows installer, when it's ready, gets attached to this same
+    # release afterwards by attach-windows-installer below.
+    needs: [compute-tag, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ needs.compute-tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow clone - the changelog
+          # step below walks git log back to the previous release tag,
+          # which a shallow clone wouldn't have.
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: jarvis_desktop-macos
+          path: dist
+
+      - name: Tag this commit (changelog history anchor - the release itself now lives in a separate repo)
+        # The actual GitHub Release object moves to the public releases
+        # repo below, which has no commit history of its own worth
+        # anchoring to - but this repo's changelog step still needs a
+        # real git tag on a real commit here to diff against next time.
+        # Pushing this tag is what `gh release create <tag> --target sha`
+        # used to do as a side effect when releases were created in this
+        # repo directly.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.compute-tag.outputs.tag }}" "${{ github.sha }}"
+          git push origin "${{ needs.compute-tag.outputs.tag }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Build a changelog since the last desktop-build release
+        # Local git tags now, not `gh release list` - the changelog is
+        # about this repo's own commit history, and no longer needs to
+        # ask the public releases repo's API for anything.
+        run: |
+          set -e
+          prev_tag=$(git tag --list 'desktop-build-*' --sort=-creatordate \
+            | grep -v "^${{ needs.compute-tag.outputs.tag }}\$" | head -n1 || true)
+          if [ -n "$prev_tag" ]; then
+            git log "${prev_tag}..HEAD" --pretty="- %s" --no-merges > changelog.md
+          else
+            git log --pretty="- %s" --no-merges > changelog.md
+          fi
+          if [ ! -s changelog.md ]; then
+            echo "No functional changes since the last release." > changelog.md
+          fi
+
+      - name: Create the public release
+        # Targets RELEASES_REPO (binaries only, no source - see this
+        # workflow's own env: block), using RELEASES_REPO_TOKEN since the
+        # default github.token has no write access outside this repo. No
+        # --target: that repo has no commit matching github.sha, and none
+        # is needed for a binary-only release - it just attaches to that
+        # repo's own default branch HEAD.
+        run: |
+          gh release create "${{ needs.compute-tag.outputs.tag }}" \
+            dist/Jarvis.dmg \
+            --repo "$RELEASES_REPO" \
+            --title "Desktop build $(date -u +%Y-%m-%d)" \
+            --notes-file changelog.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+
+  attach-windows-installer:
+    # Best-effort: adds the Windows installer to the release create-release
+    # just made, but only if build-windows actually succeeded - continue-on-error
+    # on that job means a Windows failure never blocks or fails this workflow.
+    needs: [create-release, build-windows]
+    if: needs.build-windows.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: jarvis_desktop-windows
+          path: dist
+
+      - name: Upload the Windows installer to the release
+        # Same public releases repo as create-release's own upload -
+        # github.repository (this private repo) is wrong here now, and
+        # github.token has no write access to RELEASES_REPO either.
+        run: gh release upload "${{ needs.create-release.outputs.tag }}" dist/JarvisSetup.exe --repo "$RELEASES_REPO"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+
+  attach-linux-package:
+    # Best-effort, same shape as attach-windows-installer. The in-app
+    # updater has no Linux support (update_checker._asset_suffix_for_platform
+    # returns None), so this .deb is a manual download only.
+    needs: [create-release, build-linux]
+    if: needs.build-linux.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: jarvis_desktop-linux
+          path: dist
+
+      - name: Upload the .deb to the release
+        run: gh release upload "${{ needs.create-release.outputs.tag }}" dist/Jarvis.deb --repo "$RELEASES_REPO"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}

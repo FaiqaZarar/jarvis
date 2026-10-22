@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE - Jarvis Cobalt light theme (throwaway)</title>
+<!--
+  PROTOTYPE - throwaway. Question: how does the chosen direction (Cobalt, light) look across the five Sources page states?
+  Switch state with the bar, the arrow keys, or ?state=empty|idle|syncing|attention|finished.
+  Flat fills, 1px borders, radius, solid colours only - no shadow, blur, transition (Qt cannot draw them).
+  Colours: the human's Cobalt values, with the proposed contrast fixes (secondary text #5D687C, orange #C07434) marked below.
+-->
+<style>
+  :root { --font: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .app {
+    --bg:#F5F7FA; --surface:#FFFFFF; --alt:#EEF1F6; --border:#E4E7EC; --ctl:#7F899C;
+    --text:#111827; --text2:#5D687C;   /* text2 adjusted from #667085 for 4.5:1 on raised surfaces */
+    --dis:#98A2B3;
+    --accent:#3157D5; --accentlight:#E7ECFF; --hover:#4A6BDE; --press:#2748B8; --acctext:#FFFFFF;
+    --orange:#C07434;                  /* adjusted from #D68B52 for 3:1 as a graphic */
+    --err:#C23B31; --errbg:#FDECEA; --ok:#1F7A4D; --okbg:#E6F4EC; --warn:#9A5A1E; --warnbg:#FFF4E8;
+    --radius:8px; --pad:12px; --gap:12px;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:#cfd5df; font-family:var(--font); font-size:13px; padding:20px 20px 110px; color:#111827; }
+  .stage { max-width:1100px; margin:0 auto; }
+  .note { color:#44506a; font-size:12px; margin-bottom:12px; line-height:1.5; }
+
+  .win { display:flex; background:var(--bg); border:1px solid #b9c1ce; border-radius:10px; overflow:hidden; min-height:620px; color:var(--text); }
+  .titlebar { height:30px; background:#E9ECF1; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:7px; padding:0 12px; font-size:12px; color:#667085; }
+  .titlebar i { width:11px; height:11px; border-radius:50%; background:#cdd3dd; display:inline-block; }
+  .shell { background:var(--bg); border:1px solid #b9c1ce; border-radius:10px; overflow:hidden; }
+  .shell .win { border:0; border-radius:0; }
+
+  .rail { width:208px; background:var(--bg); border-right:1px solid var(--border); padding:12px 10px; display:flex; flex-direction:column; gap:4px; }
+  .rail .brand { display:flex; align-items:center; gap:10px; padding:4px 10px 14px; font-weight:700; font-size:15px; letter-spacing:-.01em; }
+  .rail .brand i { width:24px; height:24px; border-radius:7px; background:var(--accent); display:inline-block; flex:none; }
+  .rail button.nav { width:100%; background:transparent; border:0; border-radius:var(--radius); color:var(--text2); display:flex; align-items:center; gap:12px; padding:9px 10px; font:inherit; font-weight:500; text-align:left; cursor:pointer; position:relative; }
+  .rail button.nav svg { width:20px; height:20px; fill:currentColor; flex:none; }
+  .rail button.nav:hover { background:var(--alt); color:var(--text); }
+  .rail button.nav.on { background:var(--accentlight); color:var(--accent); font-weight:600; }
+  .rail .grow { flex:1; }
+  .rail .collapse { display:flex; align-items:center; gap:12px; padding:9px 10px; background:transparent; border:0; border-radius:var(--radius); color:var(--text2); font:inherit; cursor:pointer; width:100%; }
+  .rail .collapse:hover { background:var(--alt); color:var(--text); }
+  .rail .collapse svg { width:20px; height:20px; fill:currentColor; flex:none; }
+  .navbadge { margin-left:auto; display:none; white-space:nowrap; font-size:11px; font-weight:600; line-height:1.5; padding:0 8px; border-radius:999px; border:1px solid transparent; }
+  [data-state="attention"] .navbadge.att { display:inline-block; background:var(--warnbg); color:var(--warn); border-color:#e8c9a6; }
+  [data-state="syncing"] .navbadge.run { display:inline-block; background:#fff; color:var(--accent); border-color:#c9d4fb; }
+  .rail button.nav.on .navbadge.run { background:#fff; }
+  /* collapsed: icon-only, optional, user-chosen; labels move to tooltips (title attribute) */
+  .collapsed .rail { width:62px; padding:12px 8px; }
+  .collapsed .rail .label-t, .collapsed .rail .brand span { display:none; }
+  .collapsed .rail button.nav, .collapsed .rail .collapse { justify-content:center; padding:10px 0; }
+  .collapsed .rail .brand { justify-content:center; padding:4px 0 14px; }
+  .collapsed .navbadge { position:absolute; top:5px; right:7px; margin:0; width:10px; height:10px; padding:0; font-size:0; box-sizing:content-box; border:2px solid var(--bg); }
+  .collapsed [data-state="attention"] .navbadge.att, [data-state="attention"].collapsed .navbadge.att { background:var(--orange); border-color:var(--bg); }
+  [data-state="syncing"].collapsed .navbadge.run { background:var(--accent); border-color:var(--bg); }
+  .collapsed .rail .collapse svg { transform:rotate(180deg); }
+
+  .main { flex:1; padding:20px 22px; display:flex; flex-direction:column; gap:var(--gap); min-width:0; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:var(--gap); min-height:34px; }
+  h1 { font-size:19px; font-weight:600; letter-spacing:-.015em; }
+  .label { font-size:12px; color:var(--text2); font-weight:600; }
+
+  .btn { font:inherit; font-weight:600; background:var(--surface); color:var(--text); border:1px solid var(--ctl); border-radius:var(--radius); padding:6px 14px; cursor:pointer; }
+  .btn:hover { background:var(--alt); }
+  .btn.primary { background:var(--accent); color:var(--acctext); border-color:var(--accent); }
+  .btn.primary:hover { background:var(--hover); border-color:var(--hover); }
+  .btn.quiet { background:transparent; border-color:transparent; color:var(--text2); }
+  .btn[disabled] { background:var(--alt); color:var(--dis); border-color:var(--border); cursor:default; }
+  .btn.big { padding:9px 20px; font-size:14px; }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .banner { display:flex; align-items:center; gap:var(--gap); padding:9px 14px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); }
+  .banner .msg { flex:1; line-height:1.45; }
+  .banner.err { background:var(--errbg); border-color:var(--err); } .banner.err b { color:var(--err); }
+  .banner.ok { background:var(--okbg); border-color:var(--ok); } .banner.ok b { color:var(--ok); }
+  .banner.warn { background:var(--warnbg); border-color:var(--orange); } .banner.warn b { color:var(--warn); }
+  .banner.info { background:var(--accentlight); border-color:#c9d4fb; }
+  .banner.info b { color:var(--accent); }
+
+  .rows { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .row { display:flex; align-items:center; gap:var(--gap); padding:10px 14px; border-top:1px solid var(--border); }
+  .row:first-child { border-top:0; }
+  .row .name { flex:1; min-width:0; } .row .name b { display:block; font-weight:600; } .row .name span { color:var(--text2); }
+  .pill { font-size:12px; font-weight:600; padding:2px 10px; border-radius:999px; border:1px solid var(--border); color:var(--text2); background:var(--alt); }
+  .pill.ok { color:var(--ok); border-color:#b6dcc6; background:var(--okbg); }
+  .pill.warn { color:var(--warn); border-color:#e8c9a6; background:var(--warnbg); }
+  .pill.run { color:var(--accent); border-color:#c9d4fb; background:var(--accentlight); }
+  .bar { height:8px; background:var(--alt); border:1px solid var(--border); border-radius:999px; overflow:hidden; width:180px; }
+  .bar i { display:block; height:100%; background:var(--accent); width:62%; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .hero { text-align:center; padding:28px 20px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .hero h2 { font-size:19px; font-weight:600; letter-spacing:-.015em; } .hero p { color:var(--text2); max-width:440px; line-height:1.5; }
+  .checks { display:flex; flex-direction:column; gap:10px; text-align:left; }
+  .step { display:flex; align-items:center; gap:9px; color:var(--text2); }
+  .step.todo { color:var(--text); font-weight:600; }
+  .dot { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--ctl); display:grid; place-items:center; font-size:11px; background:var(--surface); }
+  .dot.done { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  .strip { display:flex; align-items:center; gap:14px; }
+  .only { display:none; }
+  [data-state="empty"] .s-empty, [data-state="idle"] .s-idle, [data-state="syncing"] .s-syncing, [data-state="attention"] .s-attention, [data-state="finished"] .s-finished { display:flex; }
+  [data-state="empty"] .rows-wrap, [data-state="empty"] .top .btn { display:none; }
+  .blockshow { display:none; }
+  [data-state="empty"] .s-empty.block, [data-state="idle"] .s-idle.block, [data-state="syncing"] .s-syncing.block, [data-state="attention"] .s-attention.block, [data-state="finished"] .s-finished.block { display:block; }
+  .upd { display:none; } .showupd .upd { display:flex; }
+
+  .switcher { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 10px; display:flex; align-items:center; gap:10px; font:600 13px var(--font); z-index:10; }
+  .switcher button { font:inherit; border:0; background:#fff; color:#111; width:32px; height:32px; border-radius:50%; cursor:pointer; }
+  .switcher span { min-width:300px; text-align:center; }
+  .switcher label { font-weight:500; color:#cfd5df; display:flex; align-items:center; gap:6px; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <p class="note"><b>PROTOTYPE, throwaway.</b> Cobalt, light theme, on the Sources page in the five states from the scope doc. Switch with the bar, <b>&larr; &rarr;</b>, or <code>?state=empty|idle|syncing|attention|finished</code>. The bar's checkbox adds the "update ready" banner. The sidebar is <b>expanded with text labels by default</b>; the Collapse control at its foot (or <code>?nav=collapsed</code>) shows the optional icon-only state. The title bar is drawn here only to show the window; in the real app it is the OS's own and, as noted on the map, how it looks under OS dark mode is still open. Colours: your Cobalt values, with the two proposed contrast fixes (secondary text, orange).</p>
+
+  <div class="shell app" id="app" data-state="empty">
+    <div class="titlebar"><i></i><i></i><i></i>&nbsp; Jarvis</div>
+    <div class="win">
+      <nav class="rail" aria-label="Main">
+        <div class="brand"><i></i><span>Jarvis</span></div>
+        <button class="nav on" title="Sources"><svg viewBox="0 0 24 24"><path d="M3.9 12a5 5 0 0 1 5-5h2v2h-2a3 3 0 0 0 0 6h2v2h-2a5 5 0 0 1-5-5zm7-1h6v2h-6v-2zm4-4h2a5 5 0 0 1 0 10h-2v-2h2a3 3 0 0 0 0-6h-2V7z"/></svg><span class="label-t">Sources</span><span class="navbadge att label-b">Attention</span><span class="navbadge run label-b">Syncing</span></button>
+        <button class="nav" title="Search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg><span class="label-t">Search</span></button>
+        <button class="nav" title="Topics"><svg viewBox="0 0 24 24"><path d="M6 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm3-9h9v2H9V6zm0 6h6v2H9v-2zm0 6h9v2H9v-2z"/></svg><span class="label-t">Topics</span></button>
+        <button class="nav" title="Stats &amp; Activity"><svg viewBox="0 0 24 24"><path d="M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z"/></svg><span class="label-t">Stats &amp; Activity</span></button>
+        <div class="grow"></div>
+        <button class="nav" title="Settings"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.4 5.6a8 8 0 0 0 0-3.2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-2.8-1.6L14.8 2H9.2l-.4 2.8A8 8 0 0 0 6 6.4l-2.4-1-2 3.4 2 1.6a8 8 0 0 0 0 3.2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 2.8 1.6l.4 2.8h5.6l.4-2.8a8 8 0 0 0 2.8-1.6l2.4 1 2-3.4z"/></svg><span class="label-t">Settings</span></button>
+        <button class="collapse" id="collapse" title="Collapse sidebar"><svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg><span class="label-t">Collapse</span></button>
+      </nav>
+
+      <section class="main">
+        <div class="top"><h1>Sources</h1><button class="btn primary" id="topcta">Add a source</button></div>
+
+        <div class="banner warn upd"><div class="msg"><b>Update ready.</b> Jarvis 2026.10.2 will install when you restart. Your current version keeps working until then.</div><button class="btn primary">Restart now</button><button class="btn quiet">Later</button></div>
+
+        <!-- EMPTY -->
+        <div class="only s-empty block">
+          <div class="card hero"><h2>Add your first source</h2><p>Point Jarvis at a folder or Google Drive. It reads the files once, then keeps them current.</p><button class="btn primary big">Add your first source</button></div>
+        </div>
+        <div class="card only s-empty block">
+          <div class="label" style="margin-bottom:10px">Finish setting up</div>
+          <div class="checks">
+            <div class="step"><span class="dot done">&#10003;</span> Signed in</div>
+            <div class="step todo"><span class="dot"></span> Add your first source</div>
+            <div class="step todo"><span class="dot"></span> Connect Claude Desktop <span style="color:var(--text2);font-weight:400">(optional)</span> <button class="btn quiet" style="margin-left:auto">I don't use it</button></div>
+          </div>
+        </div>
+
+        <!-- IDLE -->
+        <div class="banner info only s-idle"><div class="msg"><b>Setup</b> &nbsp; 2 of 3 done. Connect Claude Desktop so Claude can use your files.</div><button class="btn">Connect Claude Desktop</button><button class="btn quiet">I don't use it</button></div>
+
+        <!-- SYNCING / ATTENTION / FINISHED banners -->
+        <div class="banner err only s-attention"><div class="msg"><b>Paused.</b> 340 of 500 files are saved. Google Drive needs you to sign in again.</div><button class="btn primary">Reconnect Drive</button></div>
+        <div class="banner ok only s-finished"><div class="msg"><b>All caught up.</b> 500 files saved from Research notes. Nothing needs your attention.</div><button class="btn primary">Search your files</button></div>
+        <div class="banner only s-syncing" style="background:var(--accentlight);border-color:#c9d4fb"><div class="msg"><b style="color:var(--accent)">Syncing Research notes.</b> Reading files, 310 of 500. You can keep using Jarvis.</div><button class="btn quiet">Cancel</button></div>
+
+        <div class="rows-wrap">
+          <div class="label" style="margin-bottom:8px">Your sources</div>
+          <div class="rows">
+            <div class="row"><div class="name"><b>Documents</b><span>~/Documents &middot; synced 2 minutes ago</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+
+            <div class="row only s-idle"><div class="name"><b>Research notes</b><span>~/Notes &middot; synced 1 hour ago</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+            <div class="row only s-idle"><div class="name"><b>Google Drive: Team folder</b><span>500 files &middot; synced yesterday</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+
+            <div class="row only s-syncing"><div class="name"><b>Research notes</b><span>Reading files &middot; 310 of 500</span></div><div class="bar"><i></i></div><span class="pill run">Syncing</span></div>
+            <div class="row only s-syncing"><div class="name"><b>Google Drive: Team folder</b><span>500 files &middot; synced yesterday</span></div><span class="pill ok">Synced</span><button class="btn" disabled>Sync now</button></div>
+
+            <div class="row only s-attention"><div class="name"><b>Google Drive: Team folder</b><span>340 of 500 files saved &middot; sign-in needed</span></div><span class="pill warn">Needs attention</span><button class="btn primary">Retry</button></div>
+            <div class="row only s-attention"><div class="name"><b>Research notes</b><span>~/Notes &middot; synced 1 hour ago</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+
+            <div class="row only s-finished"><div class="name"><b>Research notes</b><span>~/Notes &middot; synced just now</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+            <div class="row only s-finished"><div class="name"><b>Google Drive: Team folder</b><span>500 files &middot; synced yesterday</span></div><span class="pill ok">Synced</span><button class="btn">Sync now</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="switcher"><button id="prev" aria-label="Previous state">&larr;</button><span id="lbl"></span><button id="next" aria-label="Next state">&rarr;</button><label><input type="checkbox" id="upd"> update banner</label></div>
+
+<script>
+  const STATES = { empty: "Empty: no sources yet", idle: "Idle: everything synced", syncing: "Syncing: progress in focus", attention: "Needs attention: Retry", finished: "Just finished: Search your files" };
+  const keys = Object.keys(STATES), app = document.getElementById("app");
+  function show(k) {
+    app.dataset.state = k;
+    document.getElementById("lbl").textContent = STATES[k];
+    document.getElementById("topcta").textContent = "Add a source";
+    const u = new URL(location.href); u.searchParams.set("state", k); history.replaceState(null, "", u);
+  }
+  function go(d) { show(keys[(keys.indexOf(app.dataset.state) + d + keys.length) % keys.length]); }
+  document.getElementById("prev").onclick = () => go(-1);
+  document.getElementById("next").onclick = () => go(1);
+  function setCollapsed(c) { app.classList.toggle("collapsed", c); document.getElementById("collapse").title = c ? "Expand sidebar" : "Collapse sidebar"; const u = new URL(location.href); if (c) u.searchParams.set("nav", "collapsed"); else u.searchParams.delete("nav"); history.replaceState(null, "", u); }
+  document.getElementById("collapse").onclick = () => setCollapsed(!app.classList.contains("collapsed"));
+  document.getElementById("upd").onchange = e => app.classList.toggle("showupd", e.target.checked);
+  addEventListener("keydown", e => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+  const q = new URL(location.href).searchParams; const s = q.get("state"); show(keys.includes(s) ? s : "empty"); if (q.get("nav") === "collapsed") setCollapsed(true);
+</script>
+</body>
+</html>

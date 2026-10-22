@@ -1,0 +1,77 @@
+# Baseline. Grow this ticket-by-ticket rather than front-loading unused deps.
+pytest>=8.0
+python-dotenv>=1.0
+
+# J-04: local filesystem connector
+pathspec>=0.12          # .gitignore-style pattern matching
+charset-normalizer>=3.0  # encoding-detection fallback when UTF-8 decode fails
+markitdown[docx,pdf]>=0.0.1a2  # .docx / clean-PDF -> Markdown conversion (spec §8.2, §9) - the
+                                # base package alone cannot actually convert either format; it
+                                # throws MissingDependencyException without these extras
+
+# J-05: structure-aware chunking
+tiktoken>=0.7  # BPE token counting for the chunk-size target. Offline only after a
+               # successful first-run fetch of its vocab file from
+               # openaipublic.blob.core.windows.net - a restricted-egress environment
+               # will fail on first use.
+
+# Graph DB: topic/chunk hierarchy, replaces the parent_of/contains SQL tables
+ladybug>=0.18,<0.19  # pinned below 0.19: Windows wheels 0.19+ are missing required DLLs,
+                     # a known packaging bug
+
+# J-06: embedding + indexing
+requests>=2.31  # OpenRouter embeddings HTTP calls - already present transitively
+                # (via markitdown), now a direct dependency
+sqlite-vec>=0.1.9  # vector storage/KNN search, loaded as a SQLite extension
+
+# J-07: search MCP tool
+mcp>=2.1.1  # Model Context Protocol SDK - search.py imports
+            # mcp.server.mcpserver.MCPServer. Was imported but never declared;
+            # a fresh `pip install -r requirements.txt` could not import search.py.
+
+# J-11: Google Drive connector. OAuth (Testing mode, drive.readonly) + Drive v3.
+google-auth-oauthlib>=1.4.1   # InstalledAppFlow.run_local_server loopback OAuth
+google-api-python-client>=2.200.0  # Drive v3 client (files.list / export / get_media)
+
+# J-08: organize / clustering engine. Versions are the ones this ticket was
+# built and tested against (confirmed via pip freeze, not guessed).
+umap-learn>=0.5.12   # UMAP dimensionality reduction ahead of density clustering
+hdbscan>=0.8.44      # density-based base clustering (spec §6)
+scikit-learn>=1.9.0  # KMeans - used only for the degenerate-HDBSCAN fallback path
+numpy>=2.5.2         # centroid / embedding-matrix maths - was transitive, now imported directly
+# Transitive via umap-learn / hdbscan, pinned here too: these carry compiled
+# extensions (numba/llvmlite) where a silent minor bump has broken builds before.
+numba>=0.67.0
+llvmlite>=0.49.0
+scipy>=1.18.1
+pynndescent>=0.6.0
+joblib>=1.5.3
+threadpoolctl>=3.6.0
+
+# J-13: MCP debug console (jarvis/debug_ui.py). Both were already present
+# transitively (via mcp's own sse-starlette dependency); declared directly
+# now that debug_ui.py imports them itself.
+starlette>=1.6.0
+uvicorn>=0.52.4
+
+# Desktop app (docs/desktop-app-DESIGN.md): PySide6, not PyQt6 - permissive
+# LGPL license, a real constraint for a redistributed packaged app.
+# Exact-pinned, not >=: 6.11.2 is the specific version every desktop-app
+# module was written and tested against (all 32 tests in
+# tests/test_frozen_daemon_spawn.py / test_desktop_app_daemon_worker.py /
+# test_desktop_app_views.py pass against exactly this version) - not a
+# guessed minimum.
+PySide6==6.11.2
+pytest-qt>=4.5.0  # QApplication/qtbot fixtures for testing Qt widgets and signals
+
+# Telemetry (docs/observability-DESIGN.md): traces over OTLP + PostHog
+# events and error tracking. Off unless a PostHog key is configured.
+opentelemetry-sdk>=1.45
+opentelemetry-exporter-otlp-proto-http>=1.45
+posthog>=7.0
+
+# Cloud sign-in session token storage (jarvis.modules.cloud.session_store) -
+# OS Credential Manager/Keychain, not a plain file - a leaked cloud session
+# token has broader blast radius than the Drive OAuth token/embedding key,
+# which do use plain files (see that module's own docstring).
+keyring>=25.0

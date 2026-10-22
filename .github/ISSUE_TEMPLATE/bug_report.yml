@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in Jarvis doesn't work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. For a security issue, please don't use this form; see SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add a folder with ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Jarvis?
+      options:
+        - Installer from Releases
+        - From source
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Shown in Settings → Updates, or `git rev-parse --short HEAD` for a source checkout.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log excerpt
+      description: |
+        Logs are in %LOCALAPPDATA%\Jarvis\Logs (Windows), ~/Library/Logs/Jarvis (macOS) or ~/.local/state/jarvis (Linux).
+        Please remove anything private (file names, paths) before pasting.
+      render: text

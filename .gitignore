@@ -1,0 +1,80 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.log
+
+# Google Drive connector (J-11): cached OAuth token + fetch staging area.
+.google_drive_token.json
+jarvis_staging/
+*.lbdb
+*.lbdb.staging*
+
+# Local server daemon: discovery file, spawn lock, and log (see
+# docs/local-server-architecture-DESIGN.md). WAL mode's own sidecar
+# files, wherever jarvis.db ends up (repo root normally, tmp dirs in
+# tests).
+.jarvis_daemon.json
+.jarvis_daemon.lock
+.jarvis_daemon.log
+.jarvis_install_id
+*.db-wal
+*.db-shm
+.pytest_cache/
+*.egg-info/
+.idea/
+.vscode/
+
+# Scratch / exploratory scripts — not part of the shipped pipeline.
+# Convention: prefix any one-off debugging/testing script with try_
+# (e.g. try_migration.py, try_organize.py) and it stays local only.
+try_*.py
+
+# Local-only config, never committed.
+.claude/
+.agents/
+skills-lock.json
+
+# Temporary, personal review doc - not part of the repo.
+_review_bundle.md
+J06_REVIEW.md
+J07_REVIEW.md
+J07_MCP_FINDINGS.md
+J07_CHECKIN.md
+J07_CHECKIN_2.md
+J07_STATUS.md
+
+demo_kb/
+demo_dryrun.py
+demo_output_backup.txt
+jarvis.db
+jarvis.db.bak
+
+# Generated system-atlas output - local exploration artifact, not shipped docs.
+docs/jarvis/
+
+# macOS Finder metadata.
+.DS_Store
+
+# Personal ingested data - not part of the repo.
+
+# PyInstaller build output - local packaging artifacts, not shipped source.
+packaging/build/
+packaging/dist/
+
+# jarvis_server's own build/dist (python -m build), same reasoning.
+jarvis/server/build/
+jarvis/server/dist/
+
+# jarvis_cloud_server's own build/dist (python -m build / pip install .
+# wheel build), same reasoning.
+jarvis_cloud/build/
+jarvis_cloud/dist/
+
+# Downloaded desktop installer builds (from GitHub Actions), kept locally
+# for manual testing before sharing - large generated binaries, not source.
+# Deliberately not named dist/ - packaging/dist/ above is a
+# different thing (PyInstaller's own local raw build output).
+release-builds/

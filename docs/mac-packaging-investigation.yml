@@ -1,0 +1,211 @@
+# HISTORICAL RECORD, NOT AN ACTIVE WORKFLOW.
+#
+# This is the actual throwaway GitHub Actions workflow used to
+# investigate Mac packaging feasibility for the desktop app, kept here
+# (outside .github/workflows/, so it never auto-triggers again) because
+# its findings are real, verified, and worth keeping - not because it's
+# meant to run. Every step below actually executed on a real
+# macos-latest GitHub-hosted runner; every result quoted in the comments
+# is real log output, not inferred.
+#
+# Three real findings, in the order they were established:
+#   1. python.org's official macOS CPython build (what actions/setup-
+#      python installs) has no sqlite3.Connection.enable_load_extension()
+#      at all - AttributeError, not a permissions error. sqlite-vec (this
+#      app's vector-storage extension) requires it - a real, confirmed
+#      blocker for the obvious approach.
+#   2. pysqlite3-binary (the cheaper, smaller-blast-radius fix candidate,
+#      tried first) turned out to publish ONLY Linux wheels
+#      (manylinux2014_x86_64) across all 22 of its released versions -
+#      confirmed against PyPI's own file listing. Never shipped for
+#      macOS at all; not usable.
+#   3. Homebrew's python@3.13 - a full interpreter swap - is the
+#      confirmed, working fix: real enable_load_extension() support, a
+#      real vec0.dylib load with a correct KNN query result, real FTS5,
+#      and (checked separately, since none of this should be assumed
+#      just because sqlite-vec worked) numba's real JIT compilation,
+#      llvmlite's real behavior in the exact way this project actually
+#      uses it, and a real headless PySide6 QApplication all confirmed
+#      working under the same Homebrew Python venv.
+#
+# This became the basis for packaging/jarvis_desktop_mac.spec
+# and .github/workflows/build.yml's build-macos job.
+#
+# Original workflow name: "Mac sqlite3 extension-loading smoke test"
+#
+# Stage 1 (answered - real FAIL on a real macos-latest runner):
+# python.org's official macOS CPython build (what actions/setup-python
+# installs) has no sqlite3.Connection.enable_load_extension() at all -
+# AttributeError, not a permissions error. sqlite-vec (this app's
+# vector-storage extension) requires it.
+#
+# Stage 2 (answered - real FAIL): pysqlite3-binary, the recommended
+# first candidate (smaller blast radius than swapping the whole
+# interpreter), turned out to publish ONLY Linux wheels
+# (manylinux2014_x86_64) across every one of its 22 published versions -
+# confirmed directly against PyPI's file listing, not assumed. `pip
+# install pysqlite3-binary` fails outright on macOS runners:
+# "Could not find a version that satisfies the requirement... none".
+#
+# Stage 3 (this version): Homebrew's own python@3.13 - a full interpreter
+# swap, bigger blast radius (every other compiled wheel - numba,
+# llvmlite, PySide6 - was verified against python.org's build, not this
+# one), but Homebrew's sqlite formula is commonly built with extension
+# loading enabled. Homebrew Python is "externally managed" (PEP 668), so
+# this installs sqlite-vec into a venv rather than fighting that
+# protection. Tests the same real things: enable_load_extension(),
+# actually loading the real vec0.dylib and running a real KNN query, and
+# FTS5 (already used by this project's migrations).
+#
+# Stage 4 (this version): before committing to Homebrew Python as the
+# real fix, verify the follow-up concern already flagged in stage 3 -
+# every other compiled/heavy dependency (numba, llvmlite, PySide6) was
+# only ever verified against python.org's official build, not Homebrew's.
+# Installs the exact pinned versions from requirements.txt into the same
+# venv and actually exercises each: a real JIT-compiled numba function
+# (not just import), llvmlite's native-target init directly (not assumed
+# fine just because numba works), and a real QApplication instance under
+# PySide6 (headless via QT_QPA_PLATFORM=offscreen, since GitHub-hosted
+# macOS runners have no display).
+#
+# Delete this workflow once answered.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - desktop-app-v1
+    paths:
+      - .github/workflows/mac-smoke-test.yml
+
+jobs:
+  sqlite-extension-check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Report which Python/sqlite3 build is actually in use (python.org, via actions/setup-python)
+        run: |
+          which python3
+          python3 --version
+          python3 -c "import sqlite3; print('sqlite3 module file:', sqlite3.__file__); print('sqlite_version:', sqlite3.sqlite_version)"
+
+      - name: Confirm the stdlib sqlite3 blocker still reproduces (baseline)
+        run: |
+          python3 -c "import sqlite3; c = sqlite3.connect(':memory:'); c.enable_load_extension(True); print('OK: extension loading supported')" || echo "CONFIRMED BLOCKED (expected, matches prior run)"
+
+      - name: Install Homebrew's python@3.13 (candidate fix #2, after pysqlite3-binary turned out Linux-only)
+        run: |
+          brew install python@3.13
+          /opt/homebrew/opt/python@3.13/bin/python3.13 --version
+          /opt/homebrew/opt/python@3.13/bin/python3.13 -c "import sqlite3; print('sqlite3 module file:', sqlite3.__file__); print('sqlite_version:', sqlite3.sqlite_version)"
+
+      - name: Real test - Homebrew Python's enable_load_extension baseline
+        run: |
+          /opt/homebrew/opt/python@3.13/bin/python3.13 -c "import sqlite3; c = sqlite3.connect(':memory:'); c.enable_load_extension(True); print('OK: extension loading supported under Homebrew Python')"
+
+      - name: Set up a venv with Homebrew Python and install sqlite-vec (PEP 668 - Homebrew Python is externally managed)
+        run: |
+          /opt/homebrew/opt/python@3.13/bin/python3.13 -m venv /tmp/brew_venv
+          /tmp/brew_venv/bin/pip install --quiet sqlite-vec
+
+      - name: Real test - actually load the real vec0.dylib + run a real KNN query + FTS5, under Homebrew Python
+        run: |
+          /tmp/brew_venv/bin/python3 -c "
+          import sqlite3
+          print('sqlite_version:', sqlite3.sqlite_version)
+
+          conn = sqlite3.connect(':memory:')
+          conn.execute(\"CREATE VIRTUAL TABLE t USING fts5(x)\")
+          conn.execute(\"INSERT INTO t(x) VALUES ('hello world')\")
+          rows = conn.execute(\"SELECT x FROM t WHERE t MATCH 'hello'\").fetchall()
+          assert rows == [('hello world',)], rows
+          print('OK: FTS5 works under Homebrew Python')
+
+          import sqlite_vec
+          conn.enable_load_extension(True)
+          sqlite_vec.load(conn)
+          conn.enable_load_extension(False)
+          version = conn.execute('SELECT vec_version()').fetchone()
+          print('OK: vec0 extension loaded, vec_version() =', version)
+          conn.execute('CREATE VIRTUAL TABLE v USING vec0(embedding float[4])')
+          conn.execute('INSERT INTO v(rowid, embedding) VALUES (1, ?)', (sqlite_vec.serialize_float32([1.0, 2.0, 3.0, 4.0]),))
+          result = conn.execute('SELECT rowid FROM v WHERE embedding MATCH ? AND k = 1', (sqlite_vec.serialize_float32([1.0, 2.0, 3.0, 4.0]),)).fetchall()
+          assert result == [(1,)], result
+          print('OK: real vec0 KNN query round-tripped correctly under Homebrew Python')
+          "
+
+      - name: Install numba/llvmlite/PySide6 (exact pinned versions from requirements.txt) into the same Homebrew venv
+        run: |
+          /tmp/brew_venv/bin/pip install --quiet "numba>=0.67.0" "llvmlite>=0.49.0" "PySide6==6.11.2"
+          /tmp/brew_venv/bin/python3 -c "import numba, llvmlite, PySide6; print('numba', numba.__version__); print('llvmlite', llvmlite.__version__); print('PySide6', PySide6.__version__)"
+
+      - name: Real test - bare llvmlite.binding, imported before numba, with no init call (real, honest negative result)
+        run: |
+          /tmp/brew_venv/bin/python3 -c "
+          import llvmlite.binding as llvm
+          # llvmlite's own docs say versions >=0.45 need no explicit init
+          # call at all - but confirmed directly on this runner, calling
+          # Target.from_default_triple() with nothing else imported first
+          # still raises RuntimeError('Unable to find target for this
+          # triple (no targets are registered)'). This is a known real
+          # llvmlite quirk (see numba/llvmlite GitHub issues #628, #497),
+          # not Mac/Homebrew-specific - reported honestly rather than
+          # silently worked around.
+          try:
+              target = llvm.Target.from_default_triple()
+              print('UNEXPECTED: bare llvmlite worked with no prior init:', target.triple)
+          except RuntimeError as exc:
+              print('CONFIRMED (expected, matches known llvmlite issue): bare llvmlite.binding needs something to trigger init first -', exc)
+          "
+
+      - name: Real test - numba actually JIT-compiles and executes a function (the real, production usage pattern - llvmlite is never used standalone)
+        run: |
+          /tmp/brew_venv/bin/python3 -c "
+          import numba
+          import numpy as np
+
+          @numba.njit
+          def sum_of_squares(arr):
+              total = 0.0
+              for x in arr:
+                  total += x * x
+              return total
+
+          data = np.array([1.0, 2.0, 3.0, 4.0])
+          result = sum_of_squares(data)
+          expected = float((data ** 2).sum())
+          assert result == expected, (result, expected)
+          print('OK: numba njit-compiled function executed correctly, result =', result)
+          print('OK: numba signatures after JIT:', sum_of_squares.signatures)
+          "
+
+      - name: Real test - after numba has initialized it, does bare llvmlite.binding now work too?
+        continue-on-error: true  # informative either way - must not block the PySide6 check below
+        run: |
+          /tmp/brew_venv/bin/python3 -c "
+          import numba  # numba's own import performs whatever real-world-correct llvmlite init it needs internally
+          import llvmlite.binding as llvm
+          target = llvm.Target.from_default_triple()
+          target_machine = target.create_target_machine()
+          print('OK: after importing numba, llvmlite.binding resolved the native target:', target.triple)
+          print('OK: after importing numba, llvmlite.binding created a target machine:', target_machine.triple)
+          "
+
+      - name: Real test - PySide6 actually creates a QApplication, headless (QT_QPA_PLATFORM=offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          /tmp/brew_venv/bin/python3 -c "
+          from PySide6.QtWidgets import QApplication, QLabel
+          app = QApplication.instance() or QApplication([])
+          print('OK: QApplication created, platformName =', app.platformName())
+          label = QLabel('hello from a real QWidget')
+          label.show()
+          print('OK: a real QWidget (QLabel) was constructed and shown headlessly')
+          app.quit()
+          "

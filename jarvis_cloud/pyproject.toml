@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jarvis-cloud-server"
+version = "0.1.0"
+description = "Jarvis's shared cloud server: magic-link sign-in, feedback collection (opens a GitHub issue per report), and metrics - a separate, multi-user, Postgres-backed deployment from jarvis-server (the per-user local daemon)."
+requires-python = ">=3.11"
+dependencies = [
+    # Config loading (.env, same convention as jarvis_server's own
+    # env_config module).
+    "python-dotenv>=1.0",
+
+    # Postgres - sync driver + a connection pool, not asyncpg. Route
+    # handlers wrap calls in asyncio.to_thread, the same shape
+    # jarvis_server's daemon already uses for its own (SQLite) queries -
+    # see docs/coding-guides/database-access.md.
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
+
+    # GitHub issue creation for /feedback.
+    "requests>=2.31",
+
+    # The server's own HTTP framework - same as jarvis_server's daemon.
+    "starlette>=1.6.0",
+    "uvicorn>=0.52.4",
+
+    # /metrics (Prometheus scrape target).
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-prometheus>=0.48b0",
+    "prometheus-client>=0.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jarvis_cloud_server*"]
+
+[tool.setuptools.package-data]
+jarvis_cloud_server = ["migrations/*.sql"]

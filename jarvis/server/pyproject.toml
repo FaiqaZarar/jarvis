@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jarvis-server"
+version = "0.1.0"
+description = "Jarvis's server-side implementation: the local daemon, the ingest pipeline, the organize/clustering engine, connectors, and the MCP tool implementations - installable independently of jarvis's CLI/GUI clients."
+requires-python = ">=3.11"
+dependencies = [
+    # Config loading (jarvis_server.internal.env_config), read both by
+    # the daemon and (via this same distribution) the desktop app.
+    "python-dotenv>=1.0",
+
+    # Connectors (filesystem + Drive).
+    "pathspec>=0.12",
+    "charset-normalizer>=3.0",
+    "markitdown[docx,pdf]>=0.0.1a2",
+    "google-auth-oauthlib>=1.4.1",
+    "google-api-python-client>=2.200.0",
+
+    # Chunking.
+    "tiktoken>=0.7",
+
+    # Graph DB - the topic/chunk hierarchy's source of truth.
+    "ladybug>=0.18,<0.19",
+
+    # Embedding + LLM calls (OpenRouter), vector storage.
+    "requests>=2.31",
+    "sqlite-vec>=0.1.9",
+
+    # The daemon's own HTTP server + the MCP tool-definition SDK its
+    # route handlers are decorated with.
+    "starlette>=1.6.0",
+    "uvicorn>=0.52.4",
+    "mcp>=2.1.1",
+
+    # Telemetry (docs/observability-DESIGN.md): OpenTelemetry traces
+    # exported over OTLP, plus PostHog events and error tracking.
+    "opentelemetry-sdk>=1.45",
+    "opentelemetry-exporter-otlp-proto-http>=1.45",
+    "posthog>=7.0",
+
+    # Process introspection - desktop app's Settings page (daemon
+    # PID/uptime/RAM, Force Kill).
+    "psutil>=6.0",
+
+    # Organize / clustering engine (UMAP + HDBSCAN + the KMeans
+    # fallback). Numba/llvmlite carry compiled extensions - pinned
+    # explicitly since a silent minor bump has broken builds before
+    # (see requirements.txt's own note, kept in sync with this file).
+    "umap-learn>=0.5.12",
+    "hdbscan>=0.8.44",
+    "scikit-learn>=1.9.0",
+    "numpy>=2.5.2",
+    "numba>=0.67.0",
+    "llvmlite>=0.49.0",
+    "scipy>=1.18.1",
+    "pynndescent>=0.6.0",
+    "joblib>=1.5.3",
+    "threadpoolctl>=3.6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jarvis_server*"]
+
+[tool.setuptools.package-data]
+jarvis_server = ["migrations/*.sql"]

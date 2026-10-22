@@ -1,0 +1,1053 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Jarvis MCP Debug Console</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7fb; --bg-alt: #ffffff; --bg-sunken: #eef0f6;
+    --border: #e1e4ec; --border-strong: #c9cedb;
+    --text: #1b1e27; --text-dim: #6b7080; --text-faint: #9297a8;
+    --accent: #4f5fe0; --accent-bg: #4f5fe014; --accent-text: #4148b8;
+    --ok: #17845a; --ok-bg: #17845a16;
+    --err: #c3402f; --err-bg: #c3402f16;
+    --warn: #b3760a; --warn-bg: #b3760a16;
+    --shadow: 0 1px 2px rgba(20, 22, 30, .04), 0 8px 24px rgba(20, 22, 30, .05);
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161c; --bg-alt: #1b1e27; --bg-sunken: #10121780;
+      --border: #2a2e3a; --border-strong: #3a3f4f;
+      --text: #e7e9f0; --text-dim: #9297a8; --text-faint: #6b7080;
+      --accent: #7c8bff; --accent-bg: #7c8bff1c; --accent-text: #aab3ff;
+      --ok: #4fd39a; --ok-bg: #4fd39a1c;
+      --err: #ff7a68; --err-bg: #ff7a681c;
+      --warn: #f2b84c; --warn-bg: #f2b84c1c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 8px 24px rgba(0, 0, 0, .35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--font-ui); margin: 0; display: flex; height: 100vh;
+         background: var(--bg); color: var(--text); font-size: 14px; }
+  ::selection { background: var(--accent-bg); }
+
+  aside { width: 232px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 18px 14px;
+          overflow-y: auto; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 0 4px 16px; }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+                box-shadow: 0 0 0 3px var(--ok-bg); flex-shrink: 0; }
+  .brand strong { font-size: 14.5px; letter-spacing: -.01em; }
+  .brand span { display: block; font-size: 11px; color: var(--text-faint); }
+
+  aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+             color: var(--text-faint); margin: 0 0 8px; padding: 0 4px; }
+  #tool-list { display: flex; flex-direction: column; gap: 3px; }
+  aside button.tool { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+                 padding: 7px 10px; border: 1px solid transparent; border-radius: 7px; background: none;
+                 cursor: pointer; font: inherit; font-size: 13px; color: var(--text-dim);
+                 transition: background .1s, color .1s; }
+  aside button.tool:hover { background: var(--bg-sunken); color: var(--text); }
+  aside button.tool.active { border-color: var(--border); background: var(--accent-bg); color: var(--accent-text); font-weight: 600; }
+  aside button.tool .tick { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .5; flex-shrink: 0; }
+
+  .spacer { flex: 1; }
+  .ghost-btn { padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg-alt);
+               color: var(--text-dim); cursor: pointer; font: inherit; font-size: 12.5px; text-align: left; }
+  .ghost-btn:hover { border-color: var(--border-strong); color: var(--text); }
+
+  main { flex: 1; padding: 28px 36px; overflow-y: auto; }
+  .panel { max-width: 760px; }
+  h1 { font-size: 19px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .desc { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-wrap; }
+
+  details { margin-bottom: 18px; }
+  details summary { cursor: pointer; color: var(--text-dim); font-size: 12.5px; font-weight: 500;
+                     list-style: none; display: inline-flex; align-items: center; gap: 5px; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸"; font-size: 10px; transition: transform .1s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary:hover { color: var(--text); }
+  details pre { margin-top: 8px; }
+
+  label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-dim);
+                       text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  textarea { width: 100%; box-sizing: border-box; font-family: var(--font-mono); font-size: 12.5px;
+             line-height: 1.5; padding: 12px; border-radius: 9px; border: 1px solid var(--border);
+             background: var(--bg-alt); color: var(--text); min-height: 100px; resize: vertical; }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  pre { background: var(--bg-sunken); border: 1px solid var(--border); padding: 12px 14px; border-radius: 9px;
+        overflow-x: auto; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap;
+        color: var(--text); }
+  .row { display: flex; gap: 10px; align-items: center; margin: 14px 0; }
+  button.call { padding: 9px 18px; border-radius: 8px; border: none; background: var(--accent); color: #fff;
+                cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); }
+  button.call:hover:not(:disabled) { filter: brightness(1.08); }
+  button.call:disabled { opacity: .5; cursor: default; box-shadow: none; }
+  .badge { font-size: 11.5px; padding: 3px 9px; border-radius: 20px; font-weight: 700; letter-spacing: .02em;
+           text-transform: uppercase; }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.err { background: var(--err-bg); color: var(--err); }
+  #status { font-size: 12.5px; color: var(--text-faint); font-family: var(--font-mono); }
+  #result:empty { display: none; }
+
+  .section-title { display: flex; align-items: baseline; gap: 8px; margin: 32px 0 10px; }
+  .section-title h2 { font-size: 13px; margin: 0; }
+  .section-title .hint { font-size: 11.5px; color: var(--text-faint); font-family: var(--font-mono); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0 0; }
+
+  #log { max-height: 280px; overflow-y: auto; font-size: 11.5px; }
+  #log .line { white-space: pre-wrap; }
+  #log .line.err { color: var(--err); }
+  #log .line.warn { color: var(--warn); }
+  #log .line.dim { color: var(--text-faint); }
+
+  /* -- playground -- */
+  .pg-panel { max-width: 1040px; }
+  .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px 16px; margin: 14px 0 18px; }
+  .pg-field label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .pg-field label .default { color: var(--text-faint); font-weight: 400; }
+  .pg-field input, .pg-field select { width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px;
+     padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-alt); color: var(--text); }
+  .pg-field input:focus, .pg-field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .pg-field.changed input, .pg-field.changed select { border-color: var(--accent); background: var(--accent-bg); }
+  .pg-field .help { margin: 4px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--text-faint); }
+  .pg-toprow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0; }
+  .pg-toprow .pg-field { width: 140px; }
+
+  .pg-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 20px; }
+  .stat { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: 8px;
+          padding: 8px 12px; font-size: 12px; min-width: 92px; }
+  .stat .n { font-size: 17px; font-weight: 700; display: block; }
+  .stat .l { color: var(--text-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .stat.warn { border-color: var(--warn); background: var(--warn-bg); }
+
+  .pg-scatter { width: 100%; height: 380px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-alt); cursor: crosshair; margin-bottom: 4px; }
+  #scatter-tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg);
+     padding: 6px 9px; border-radius: 6px; font-size: 11.5px; max-width: 320px; line-height: 1.4; z-index: 50; display: none; }
+
+  .card-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+  .cluster-card { border: 1px solid var(--border); background: var(--bg-alt); border-radius: 9px; padding: 10px 13px; }
+  .cluster-card .head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+  .cluster-card .swatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .cluster-card .meta { color: var(--text-faint); font-size: 11px; font-weight: 400; }
+  .cluster-card .desc { color: var(--text-dim); font-size: 12px; margin: 4px 0 0; }
+  .cluster-card details { margin: 6px 0 0; }
+  .cluster-card details summary { font-size: 11px; }
+
+  .tree ul { list-style: none; margin: 0; padding-left: 18px; border-left: 1px dashed var(--border); }
+  .tree > ul { padding-left: 0; border-left: none; }
+  .tree li { margin: 3px 0; }
+  .tree .node { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 2px 0; }
+  .tree .node .cnt { color: var(--text-faint); font-size: 11px; }
+  .tree .node.leaf { color: var(--text-dim); }
+
+  .rollup-round { border: 1px solid var(--border); border-radius: 9px; padding: 10px 13px; margin-bottom: 8px; }
+  .rollup-round .title { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+  .rollup-round .group { font-size: 12px; color: var(--text-dim); margin: 3px 0; padding-left: 10px; border-left: 2px solid var(--border-strong); }
+  .rollup-round .group.made { border-left-color: var(--accent); }
+
+  /* -- tabs -- */
+  .pg-tabs { display: flex; gap: 4px; margin: 4px 0 18px; border-bottom: 1px solid var(--border); }
+  .pg-tab { padding: 8px 4px; margin-right: 14px; border: none; background: none; cursor: pointer;
+            font: inherit; font-size: 13px; color: var(--text-faint); border-bottom: 2px solid transparent; }
+  .pg-tab:hover { color: var(--text); }
+  .pg-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+
+  /* -- step-by-step stepper -- */
+  .stepper { border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px 16px; margin: 14px 0; background: var(--bg-alt); }
+  .stepper-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .stepper-head .title { font-size: 13.5px; font-weight: 700; }
+  .stepper-head .sub { font-size: 11.5px; color: var(--text-faint); font-family: var(--font-mono); }
+  .stage { border-top: 1px solid var(--border); padding: 12px 0 0; margin-top: 12px; }
+  .stage:first-of-type { border-top: none; margin-top: 8px; padding-top: 0; }
+  .stage.disabled { opacity: .4; pointer-events: none; }
+  .stage-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .stage-num { width: 20px; height: 20px; border-radius: 50%; background: var(--bg-sunken); border: 1px solid var(--border);
+               display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-dim); flex-shrink: 0; }
+  .stage.done .stage-num { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .stage-name { font-size: 12.5px; font-weight: 600; }
+  .stage-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 12px; margin: 8px 0 10px; }
+  .stage-fields .pg-field label { font-size: 10.5px; }
+  .stage-fields input, .stage-fields select { padding: 5px 7px; font-size: 12px; }
+  .stage-run-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .stage-run-row button.call { padding: 6px 14px; font-size: 12px; }
+  .stage-out { margin-top: 6px; }
+  .stage-out canvas.pg-scatter { height: 300px; }
+
+  /* -- synced roots -- */
+  .sr-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  .sr-table th, .sr-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .sr-table th { color: var(--text-faint); font-weight: 600; text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; }
+  .sr-table td { font-family: var(--font-mono); color: var(--text-dim); }
+  .sr-empty { color: var(--text-faint); font-size: 13px; margin-top: 10px; }
+  .sr-status { font-size: 11px; color: var(--text-faint); margin-top: 4px; font-family: var(--font-mono); }
+  .sr-status.ok { color: var(--ok); }
+  .sr-status.err { color: var(--err); }
+  .sr-banner { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--accent-bg);
+               color: var(--accent-text); font-size: 12.5px; font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">
+    <span class="dot"></span>
+    <div><strong>Jarvis</strong><span>MCP debug console</span></div>
+  </div>
+  <h2>Tools</h2>
+  <div id="tool-list"></div>
+  <h2 style="margin-top:18px">Organize</h2>
+  <div id="organize-list">
+    <button class="tool" id="btn-playground" onclick="selectPlayground()"><span class="tick"></span>Clustering playground</button>
+  </div>
+  <h2 style="margin-top:18px">Sync</h2>
+  <div id="sync-roots-list">
+    <button class="tool" id="btn-sync-roots" onclick="selectSyncRoots()"><span class="tick"></span>Synced roots</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="ghost-btn" onclick="refreshLog()">↻ Refresh log</button>
+</aside>
+<main>
+  <div class="panel" id="tool-detail">Loading tools…</div>
+  <div class="pg-panel" id="playground-view" hidden></div>
+  <div class="panel" id="sync-roots-view" hidden></div>
+  <hr class="divider">
+  <div class="section-title">
+    <h2>Server log</h2>
+    <span class="hint">.jarvis_debug_ui_server.log</span>
+  </div>
+  <pre id="log">(not loaded yet)</pre>
+</main>
+<div id="scatter-tip"></div>
+<script>
+let TOOLS = [];
+let EXAMPLES = {};
+let selected = null;
+
+async function loadTools() {
+  const res = await fetch('/api/tools');
+  const data = await res.json();
+  TOOLS = data.tools;
+  EXAMPLES = data.examples;
+  const list = document.getElementById('tool-list');
+  list.innerHTML = '';
+  TOOLS.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'tool';
+    b.innerHTML = `<span class="tick"></span>${t.name}`;
+    b.onclick = () => selectTool(t.name);
+    b.id = 'btn-' + t.name;
+    list.appendChild(b);
+  });
+  if (TOOLS.length) selectTool(TOOLS[0].name);
+}
+
+function selectTool(name) {
+  selected = TOOLS.find(t => t.name === name);
+  document.querySelectorAll('aside button.tool').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + name);
+  if (btn) btn.classList.add('active');
+  document.getElementById('playground-view').hidden = true;
+  document.getElementById('sync-roots-view').hidden = true;
+  document.getElementById('tool-detail').hidden = false;
+
+  const example = EXAMPLES[name] ? JSON.stringify(EXAMPLES[name], null, 2) : '{}';
+  document.getElementById('tool-detail').innerHTML = `
+    <h1>${selected.name}</h1>
+    <div class="desc">${selected.description || ''}</div>
+    <details><summary>Input schema</summary><pre>${JSON.stringify(selected.input_schema, null, 2)}</pre></details>
+    <label class="field-label" for="args">Arguments (JSON)</label>
+    <textarea id="args">${example}</textarea>
+    <div class="row">
+      <button class="call" id="call-btn" onclick="callTool()">Call</button>
+      <span id="status"></span>
+    </div>
+    <div id="result"></div>
+  `;
+  document.getElementById('args').focus();
+}
+
+async function callTool() {
+  const btn = document.getElementById('call-btn');
+  const status = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  btn.disabled = true;
+  status.textContent = 'calling...';
+  resultEl.innerHTML = '';
+  const argsText = document.getElementById('args').value;
+  try {
+    const res = await fetch('/api/call', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tool: selected.name, arguments_json: argsText}),
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    if (data.ok) {
+      const isError = data.result && data.result.isError;
+      status.innerHTML = `<span class="badge ${isError ? 'err' : 'ok'}">${isError ? 'tool error' : 'ok'}</span> ${data.elapsed_ms} ms`;
+      resultEl.innerHTML = `<pre>${escapeHtml(JSON.stringify(data.result, null, 2))}</pre>`;
+    } else {
+      status.innerHTML = `<span class="badge err">failed</span> ${data.elapsed_ms || ''} ms`;
+      resultEl.innerHTML = `<pre>${escapeHtml(data.error)}</pre>`;
+    }
+  } catch (e) {
+    btn.disabled = false;
+    status.innerHTML = '<span class="badge err">failed</span>';
+    resultEl.innerHTML = `<pre>${escapeHtml(String(e))}</pre>`;
+  }
+  refreshLog();
+}
+
+async function refreshLog() {
+  const res = await fetch('/api/log');
+  const data = await res.json();
+  const el = document.getElementById('log');
+  const text = data.text || '(empty)';
+  el.innerHTML = text.split('\n').map(line => {
+    let cls = 'line';
+    if (/\bERROR\b|Traceback/.test(line)) cls += ' err';
+    else if (/\bWARNING\b/.test(line)) cls += ' warn';
+    else if (/^\s/.test(line)) cls += ' dim';
+    return `<div class="${cls}">${escapeHtml(line)}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+// ---------------------------------------------------------------------
+// Synced roots - read-only view of the sync_roots table
+// ---------------------------------------------------------------------
+
+async function selectSyncRoots() {
+  document.querySelectorAll('aside button.tool').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-sync-roots').classList.add('active');
+  document.getElementById('tool-detail').hidden = true;
+  document.getElementById('playground-view').hidden = true;
+  document.getElementById('sync-roots-view').hidden = false;
+  await refreshSyncRoots();
+}
+
+// Connectors the daemon can actually re-trigger a sync for today
+// (jarvis.modules.daemon.client.run_ingest_filesystem/run_ingest_drive) -
+// mirrors api_sync_roots_resync's own allow-list server-side.
+const SR_RESYNCABLE = new Set(['filesystem', 'drive']);
+
+let SYNC_ROOTS_DATA = [];
+let INGEST_STATUS_POLL = null;
+
+// Independent of resyncRoot()'s own per-row polling below - this is the
+// "is *anything* running right now, no matter who started it" check,
+// so reloading the page (or just clicking Refresh) while a CLI-started
+// or another-tab-started ingest is in flight still shows it, instead of
+// looking idle until that specific request happens to finish.
+async function checkIngestStatusBanner() {
+  const banner = document.getElementById('sr-ingest-banner');
+  if (!banner) return; // panel isn't the active view right now
+
+  let status;
+  try {
+    status = await (await fetch('/api/ingest_status')).json();
+  } catch (e) {
+    return; // transient - next poll tick (or next manual refresh) retries
+  }
+
+  if (status.in_progress) {
+    banner.hidden = false;
+    banner.textContent = '⏳ Syncing' + (status.phase ? ` — ${status.phase}` : '');
+    // Disable every Resync button while anything is running, not just
+    // the row that started it - clicking Resync on an already-syncing
+    // root queues a second request behind the daemon's single-writer
+    // lock instead of doing anything useful, and if it happens to queue
+    // up behind a request made before a daemon-client fix landed, the
+    // wait can surface a genuinely confusing stale-code timeout (lived
+    // this once already - see the "Resync" section below for the fix
+    // that made that traceback readable at all).
+    document.querySelectorAll('.sr-resync-btn').forEach(b => b.disabled = true);
+    if (!INGEST_STATUS_POLL) {
+      INGEST_STATUS_POLL = setInterval(checkIngestStatusBanner, 800);
+    }
+  } else {
+    const justFinished = !banner.hidden;
+    banner.hidden = true;
+    if (INGEST_STATUS_POLL) {
+      clearInterval(INGEST_STATUS_POLL);
+      INGEST_STATUS_POLL = null;
+    }
+    document.querySelectorAll('.sr-resync-btn').forEach((b, idx) => {
+      const root = SYNC_ROOTS_DATA[idx];
+      if (root) b.disabled = !SR_RESYNCABLE.has(root.connector);
+    });
+    // It was running last time we checked and now isn't - refresh the
+    // table so last_synced_at picks up the sync that just completed,
+    // rather than waiting for a manual Refresh to notice.
+    if (justFinished) refreshSyncRoots();
+  }
+}
+
+async function refreshSyncRoots() {
+  const view = document.getElementById('sync-roots-view');
+  view.innerHTML = `
+    <div class="section-title">
+      <h1 style="font-size:15px;margin:0">Synced roots</h1>
+      <span class="hint">sync_roots</span>
+    </div>
+    <div class="desc">Every (connector, root) pair that has completed a zero-error sync, and when.</div>
+    <div class="sr-banner" id="sr-ingest-banner" hidden></div>
+    <button class="ghost-btn" onclick="refreshSyncRoots()" style="margin-top:10px">↻ Refresh</button>
+    <div id="sync-roots-table">Loading…</div>
+  `;
+
+  const res = await fetch('/api/sync_roots');
+  const data = await res.json();
+  SYNC_ROOTS_DATA = data.roots || [];
+  const el = document.getElementById('sync-roots-table');
+  if (!SYNC_ROOTS_DATA.length) {
+    el.innerHTML = '<div class="sr-empty">No synced roots yet.</div>';
+    checkIngestStatusBanner();
+    return;
+  }
+  el.innerHTML = `
+    <table class="sr-table">
+      <thead><tr><th>Connector</th><th>Root</th><th>First synced</th><th>Last synced</th><th></th></tr></thead>
+      <tbody>
+        ${SYNC_ROOTS_DATA.map((r, i) => {
+          const supported = SR_RESYNCABLE.has(r.connector);
+          return `<tr>
+            <td>${escapeHtml(r.connector)}</td>
+            <td>${escapeHtml(r.root_id)}</td>
+            <td>${escapeHtml(r.first_synced_at)}</td>
+            <td>${escapeHtml(r.last_synced_at)}</td>
+            <td>
+              <button class="ghost-btn sr-resync-btn" style="font-size:11.5px;padding:5px 9px"
+                onclick="resyncRoot(${i})" ${supported ? '' : 'disabled title="No resync support for this connector yet"'}>
+                ${supported ? '↻ Resync' : 'Resync unsupported'}
+              </button>
+              <div class="sr-status" id="sr-status-${i}"></div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+  // After the buttons exist, not before - checkIngestStatusBanner's
+  // disable-every-Resync-button branch needs them in the DOM already.
+  checkIngestStatusBanner();
+}
+
+// Fires immediately on click, no confirmation - this console already
+// fires real (billed) API calls on a plain "Call" click for search, and
+// this only ever acts on a root already being tracked, never an
+// arbitrary new path. Disables every resync button while one is running
+// (not just its own row): the daemon's own _WRITE_LOCK serializes ingests
+// regardless, so a second click would just sit blocked with no feedback -
+// disabling makes that real serialization visible instead.
+async function resyncRoot(i) {
+  const root = SYNC_ROOTS_DATA[i];
+  if (!root) return;
+  const statusEl = document.getElementById('sr-status-' + i);
+  document.querySelectorAll('.sr-resync-btn').forEach(b => b.disabled = true);
+  statusEl.className = 'sr-status';
+  statusEl.textContent = 'Syncing…';
+
+  // Polls the daemon's coarse phase status (GET /api/ingest_status) on
+  // its own cadence while the resync POST below is in flight, so the
+  // status line reflects what's actually happening (e.g. "embed",
+  // "organize") instead of sitting on a static "Syncing…" for however
+  // long the whole pipeline takes - see jarvis_server.daemon.server's
+  // module docstring on _ingest_status.
+  const pollPhase = setInterval(async () => {
+    try {
+      const sRes = await fetch('/api/ingest_status');
+      const sData = await sRes.json();
+      if (sData.in_progress && sData.phase) {
+        statusEl.textContent = `Syncing… (${sData.phase})`;
+      }
+    } catch (e) { /* transient poll failure - next tick will retry */ }
+  }, 800);
+
+  try {
+    const res = await fetch('/api/sync_roots/resync', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({connector: root.connector, root_id: root.root_id}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const stats = (data.result && data.result.sync) || {};
+      statusEl.className = 'sr-status ok';
+      statusEl.textContent = `pulled ${stats.pulled ?? '?'}, errors ${stats.errors ?? '?'} · ${data.elapsed_ms}ms`;
+    } else {
+      statusEl.className = 'sr-status err';
+      statusEl.textContent = `failed: ${data.error}`;
+    }
+  } catch (e) {
+    statusEl.className = 'sr-status err';
+    statusEl.textContent = `failed: ${String(e)}`;
+  } finally {
+    clearInterval(pollPhase);
+  }
+
+  document.querySelectorAll('.sr-resync-btn').forEach((b, idx) => {
+    b.disabled = !SR_RESYNCABLE.has(SYNC_ROOTS_DATA[idx].connector);
+  });
+}
+
+// ---------------------------------------------------------------------
+// Clustering playground - sandboxed, offline re-run of organize()
+// ---------------------------------------------------------------------
+
+// Inputs that take an integer vs a float vs free text/select, purely for
+// the <input type> / step - the server is the source of truth on which
+// names are valid (config.TUNABLE_NAMES) and rejects anything else.
+const PG_INT = new Set(['RANDOM_SEED','UMAP_N_COMPONENTS','UMAP_N_NEIGHBORS','HDBSCAN_MIN_CLUSTER_SIZE',
+  'HDBSCAN_MIN_SAMPLES','KMEANS_FALLBACK_MIN_CLUSTERS','KMEANS_K_DIVISOR','KMEANS_K_MIN','KMEANS_K_MAX',
+  'LABEL_SAMPLE_SIZE','LABEL_SAMPLE_CHARS']);
+const PG_SELECT = {
+  UMAP_METRIC: ['cosine','euclidean','manhattan'],
+  HDBSCAN_CLUSTER_SELECTION_METHOD: ['leaf','eom'],
+};
+
+// One short, plain-language line per tunable - shown under its field so
+// "what does this do" doesn't require leaving the page. Grouped by which
+// stage actually reads it (see STAGE_PARAMS below / config.py).
+const PARAM_HELP = {
+  RANDOM_SEED: 'Pins UMAP’s randomness so re-running with the same inputs gives the same layout, not a slightly different one each time.',
+  UMAP_N_COMPONENTS: 'How many dimensions UMAP reduces each embedding down to before clustering happens.',
+  UMAP_N_NEIGHBORS: 'How many nearby points UMAP looks at to judge “close.” Low = fine local detail; high = smoother, more global shape.',
+  UMAP_MIN_DIST: 'How tightly UMAP is allowed to pack points together. Low (near 0) makes dense clumps easier for HDBSCAN to find.',
+  UMAP_METRIC: 'The distance function UMAP uses to compare two embeddings.',
+  HDBSCAN_MIN_CLUSTER_SIZE: 'Smallest group of points that counts as a real cluster. Smaller candidate groups are left as noise instead.',
+  HDBSCAN_MIN_SAMPLES: 'How strict HDBSCAN is about what “dense enough” means. Higher pushes more points into noise.',
+  HDBSCAN_CLUSTER_SELECTION_METHOD: '“leaf” favors many small, tightly-matched clusters; “eom” favors fewer, larger, more stable ones.',
+  KMEANS_FALLBACK_MIN_CLUSTERS: 'If HDBSCAN finds fewer real clusters than this, fall back to k-means instead (HDBSCAN “degenerated”).',
+  KMEANS_K_DIVISOR: 'k-means fallback only: the cluster count k is roughly (chunk count ÷ this).',
+  KMEANS_K_MIN: 'k-means fallback only: the smallest k it’s allowed to pick.',
+  KMEANS_K_MAX: 'k-means fallback only: the largest k it’s allowed to pick.',
+  PLACEMENT_SIMILARITY_THRESHOLD: 'Cosine similarity a chunk must have with a topic to be placed there, instead of falling through to Unfiled.',
+  LABEL_SAMPLE_SIZE: 'How many representative chunks (nearest the cluster’s centroid) are shown when generating its title.',
+  LABEL_SAMPLE_CHARS: 'How many characters of each sampled chunk are included when generating a title.',
+};
+
+let PG_DEFAULTS = null;
+let PG_LAST_TRACE = null;
+
+async function selectPlayground() {
+  document.querySelectorAll('aside button.tool').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-playground').classList.add('active');
+  document.getElementById('tool-detail').hidden = true;
+  document.getElementById('sync-roots-view').hidden = true;
+  const view = document.getElementById('playground-view');
+  view.hidden = false;
+  if (!PG_DEFAULTS) {
+    view.innerHTML = '<h1>Clustering playground</h1><div class="desc">Loading parameters…</div>';
+    const res = await fetch('/api/organize/params');
+    const data = await res.json();
+    PG_DEFAULTS = data;
+  }
+  renderPlaygroundForm();
+}
+
+function renderPlaygroundForm() {
+  const view = document.getElementById('playground-view');
+  const fields = PG_DEFAULTS.tunables.map(name => {
+    const val = PG_DEFAULTS.values[name];
+    let input;
+    if (PG_SELECT[name]) {
+      input = `<select id="pg-${name}">${PG_SELECT[name].map(o =>
+        `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+    } else if (typeof val === 'number') {
+      const step = PG_INT.has(name) ? '1' : 'any';
+      input = `<input id="pg-${name}" type="number" step="${step}" value="${val}">`;
+    } else {
+      input = `<input id="pg-${name}" type="text" value="${val}">`;
+    }
+    return `<div class="pg-field" id="pgf-${name}">
+      <label>${name} <span class="default">(default ${val})</span></label>
+      ${input}
+      <p class="help">${escapeHtml(PARAM_HELP[name] || '')}</p>
+    </div>`;
+  }).join('');
+
+  view.innerHTML = `
+    <h1>Clustering playground</h1>
+    <div class="desc">Re-runs the real clustering step against the live corpus's actual embeddings. Fully offline: no LLM or embedding API call is made — cluster/parent titles are auto-generated extractive stand-ins, and nothing is written to the database.</div>
+    <div class="pg-tabs">
+      <button class="pg-tab active" id="pg-tab-full" onclick="switchPgTab('full')">Full run</button>
+      <button class="pg-tab" id="pg-tab-steps" onclick="switchPgTab('steps')">Step-by-step</button>
+    </div>
+
+    <div id="pg-tab-panel-full">
+      <div class="pg-toprow">
+        <div class="pg-field">
+          <label>Sample limit <span class="default">(optional)</span></label>
+          <input id="pg-limit" type="number" min="1" placeholder="all chunks">
+        </div>
+        <button class="call" id="pg-run-btn" onclick="runPlayground()" style="align-self:flex-end">Run</button>
+        <span id="pg-status"></span>
+      </div>
+      <details open><summary>Parameters</summary><div class="pg-grid">${fields}</div></details>
+      <div id="pg-results"></div>
+    </div>
+
+    <div id="pg-tab-panel-steps" hidden>
+      <div class="desc">Run UMAP, then HDBSCAN, then labelling as separate steps — tweak one stage's parameters and re-run just that stage without redoing the ones before it.</div>
+      <div class="pg-toprow">
+        <div class="pg-field">
+          <label>Sample limit <span class="default">(optional)</span></label>
+          <input id="pgs-limit" type="number" min="1" placeholder="all chunks">
+        </div>
+        <button class="call" id="pgs-start-btn" onclick="startPgSession()" style="align-self:flex-end">Start session</button>
+        <span id="pgs-status"></span>
+      </div>
+      <div id="pgs-body"></div>
+    </div>
+  `;
+  PG_DEFAULTS.tunables.forEach(name => {
+    const el = document.getElementById('pg-' + name);
+    el.addEventListener('input', () => {
+      const changed = String(el.value) !== String(PG_DEFAULTS.values[name]);
+      document.getElementById('pgf-' + name).classList.toggle('changed', changed);
+    });
+  });
+}
+
+function switchPgTab(which) {
+  document.getElementById('pg-tab-full').classList.toggle('active', which === 'full');
+  document.getElementById('pg-tab-steps').classList.toggle('active', which === 'steps');
+  document.getElementById('pg-tab-panel-full').hidden = which !== 'full';
+  document.getElementById('pg-tab-panel-steps').hidden = which !== 'steps';
+}
+
+function collectOverrides() {
+  const overrides = {};
+  PG_DEFAULTS.tunables.forEach(name => {
+    const el = document.getElementById('pg-' + name);
+    const raw = el.value;
+    const defaultVal = PG_DEFAULTS.values[name];
+    let value = raw;
+    if (typeof defaultVal === 'number') value = Number(raw);
+    if (String(value) !== String(defaultVal)) overrides[name] = value;
+  });
+  return overrides;
+}
+
+async function runPlayground() {
+  const btn = document.getElementById('pg-run-btn');
+  const status = document.getElementById('pg-status');
+  const results = document.getElementById('pg-results');
+  btn.disabled = true;
+  status.textContent = 'clustering… (offline, may take a few seconds)';
+  results.innerHTML = '';
+  const overrides = collectOverrides();
+  const limitVal = document.getElementById('pg-limit').value;
+  const body = { overrides };
+  if (limitVal) body.limit = Number(limitVal);
+  try {
+    const res = await fetch('/api/organize/playground', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    if (!data.ok) {
+      status.innerHTML = `<span class="badge err">failed</span> ${data.elapsed_ms || ''} ms`;
+      results.innerHTML = `<pre>${escapeHtml(data.error)}</pre>`;
+      return;
+    }
+    status.innerHTML = `<span class="badge ok">ok</span> ${data.elapsed_ms} ms`;
+    PG_LAST_TRACE = data.trace;
+    renderPlaygroundResults(data.trace);
+  } catch (e) {
+    btn.disabled = false;
+    status.innerHTML = '<span class="badge err">failed</span>';
+    results.innerHTML = `<pre>${escapeHtml(String(e))}</pre>`;
+  }
+  refreshLog();
+}
+
+function pgColor(label) {
+  if (label === -1) return '#8a8f9e';
+  const hue = (label * 47) % 360;
+  return `hsl(${hue} 70% 55%)`;
+}
+
+function renderPlaygroundResults(trace) {
+  const results = document.getElementById('pg-results');
+  const s = trace.summary || {};
+  const unfiledWarn = s.unfiled_pct > 40;
+
+  let html = `<div class="pg-summary">
+    <div class="stat"><span class="n">${s.total_chunks ?? '-'}</span><span class="l">chunks</span></div>
+    <div class="stat"><span class="n">${s.topics ?? '-'}</span><span class="l">topics</span></div>
+    <div class="stat"><span class="n">${s.roots ?? '-'}</span><span class="l">root topics</span></div>
+    <div class="stat ${unfiledWarn ? 'warn' : ''}"><span class="n">${s.unfiled_pct ?? '-'}%</span><span class="l">unfiled</span></div>
+    <div class="stat"><span class="n">${s.used_kmeans_fallback ? 'yes' : 'no'}</span><span class="l">k-means fallback</span></div>
+    <div class="stat ${s.low_confidence ? 'warn' : ''}"><span class="n">${s.low_confidence ? 'yes' : 'no'}</span><span class="l">low confidence</span></div>
+  </div>`;
+
+  if (s.low_confidence_reason) {
+    html += `<div class="desc" style="color:var(--warn)">${escapeHtml(s.low_confidence_reason)}</div>`;
+  }
+
+  if (trace.umap && trace.umap.points && trace.umap.points.length) {
+    const p = trace.umap.effective_params || {};
+    html += `<div class="section-title"><h2>1. UMAP — positions chunks by similarity</h2><span class="hint">n_neighbors=${p.n_neighbors}, n_components=${p.n_components}, projection=${trace.umap.projection}</span></div>
+      <div class="desc" style="margin-bottom:8px">Every chunk placed by how similar its embedding is to the others — nothing is clustered yet, no colors mean anything here.</div>
+      <canvas class="pg-scatter" id="scatter-umap" width="1000" height="340"></canvas>`;
+  }
+
+  if (trace.base && trace.base.points && trace.base.points.length) {
+    html += `<div class="section-title"><h2>2. HDBSCAN — finds the dense clusters</h2><span class="hint">${trace.base.n_clusters} clusters, ${trace.base.n_noise} noise${trace.base.used_kmeans_fallback ? ' (k-means fallback)' : ''}</span></div>
+      <div class="desc" style="margin-bottom:8px">Same positions as above — each point is now colored by the cluster HDBSCAN found it belongs to; gray = noise (→ Unfiled).</div>
+      <canvas class="pg-scatter" id="scatter" width="1000" height="380"></canvas>`;
+  }
+
+  if (trace.labeling && trace.labeling.length) {
+    html += `<div class="section-title"><h2>Cluster titles</h2><span class="hint">extractive, offline - not real labels</span></div><div class="card-list">`;
+    trace.labeling.forEach(c => {
+      html += `<div class="cluster-card">
+        <div class="head"><span class="swatch" style="background:${pgColor(c.cluster)}"></span>${escapeHtml(c.title)} <span class="meta">cluster ${c.cluster} · ${c.size} chunk(s)</span></div>
+        <p class="desc" style="margin:4px 0 0">${escapeHtml(c.description)}</p>
+        <details><summary>${c.sample.length} sample excerpt(s)</summary>
+          <pre>${c.sample.map(x => escapeHtml(x.preview)).join('\n---\n')}</pre>
+        </details>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (trace.rollup && trace.rollup.rounds && trace.rollup.rounds.length) {
+    html += `<div class="section-title"><h2>Parent roll-up</h2><span class="hint">stopped: ${escapeHtml(trace.rollup.stopped_reason || '')}</span></div>`;
+    trace.rollup.rounds.forEach(r => {
+      html += `<div class="rollup-round"><div class="title">Round ${r.round} — ${r.inputs.length} node(s) in</div>`;
+      r.groups.forEach(g => {
+        const made = g.made_parent ? 'made' : '';
+        const label = g.made_parent ? `→ <strong>${escapeHtml(g.title)}</strong>` : '(promoted, no parent)';
+        html += `<div class="group ${made}">${escapeHtml(g.children.join(', '))} ${label}</div>`;
+      });
+      html += `</div>`;
+    });
+  }
+
+  if (trace.placement && trace.placement.counts) {
+    const c = trace.placement.counts;
+    html += `<div class="section-title"><h2>Placement</h2><span class="hint">threshold=${trace.placement.threshold ?? ''}</span></div>
+      <div class="pg-summary">
+        <div class="stat"><span class="n">${c.placed || 0}</span><span class="l">placed</span></div>
+        <div class="stat"><span class="n">${c.below_threshold || 0}</span><span class="l">below threshold → unfiled</span></div>
+        <div class="stat"><span class="n">${c.hdbscan_noise || 0}</span><span class="l">hdbscan noise → unfiled</span></div>
+      </div>`;
+  }
+
+  if (trace.tree && trace.tree.nodes && trace.tree.nodes.length) {
+    html += `<div class="section-title"><h2>Resulting hierarchy</h2><span class="hint">${trace.tree.roots.length} root(s), ${trace.tree.pruned.length} pruned</span></div>
+      <div class="tree" id="pg-tree"></div>`;
+  }
+
+  results.innerHTML = html;
+
+  if (trace.umap && trace.umap.points && trace.umap.points.length) {
+    drawScatter('scatter-umap', trace.umap.points, { monochrome: true });
+  }
+  if (trace.base && trace.base.points && trace.base.points.length) {
+    drawScatter('scatter', trace.base.points, { monochrome: false });
+  }
+  if (trace.tree && trace.tree.nodes && trace.tree.nodes.length) {
+    renderTree(trace.tree);
+  }
+}
+
+// `monochrome: true` draws UMAP's raw layout (step 1, before any
+// clustering decision) - every point the same color, since no label
+// exists yet. `monochrome: false` draws HDBSCAN's result (step 2) with
+// one color per cluster, gray for noise. Same projection math either way
+// so the two canvases are directly comparable position-for-position.
+function drawScatter(canvasId, points, { monochrome }) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height, pad = 20;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sx = x => pad + (maxX > minX ? (x - minX) / (maxX - minX) : 0.5) * (w - 2 * pad);
+  const sy = y => h - pad - (maxY > minY ? (y - minY) / (maxY - minY) : 0.5) * (h - 2 * pad);
+
+  const styles = getComputedStyle(document.documentElement);
+  ctx.fillStyle = styles.getPropertyValue('--bg-alt').trim() || '#fff';
+  ctx.fillRect(0, 0, w, h);
+  const monoColor = styles.getPropertyValue('--accent').trim() || '#4f5fe0';
+
+  const screenPts = points.map(p => ({ ...p, sx: sx(p.x), sy: sy(p.y) }));
+  screenPts.forEach(p => {
+    const label = monochrome ? undefined : p.label;
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, label === -1 ? 2.5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = monochrome ? monoColor : pgColor(label);
+    ctx.globalAlpha = label === -1 ? 0.5 : 0.75;
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  const tip = document.getElementById('scatter-tip');
+  canvas.onmousemove = ev => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * (w / rect.width);
+    const my = (ev.clientY - rect.top) * (h / rect.height);
+    let nearest = null, best = 64;
+    for (const p of screenPts) {
+      const d = (p.sx - mx) ** 2 + (p.sy - my) ** 2;
+      if (d < best) { best = d; nearest = p; }
+    }
+    if (nearest) {
+      tip.style.display = 'block';
+      tip.style.left = (ev.clientX + 14) + 'px';
+      tip.style.top = (ev.clientY + 14) + 'px';
+      const head = monochrome ? 'chunk' : (nearest.label === -1 ? 'noise' : 'cluster ' + nearest.label);
+      tip.innerHTML = `<strong>${head}</strong>`
+        + (!monochrome && nearest.outlier ? ` · outlier ${nearest.outlier}` : '')
+        + `<br>${escapeHtml(nearest.preview || nearest.id)}`;
+    } else {
+      tip.style.display = 'none';
+    }
+  };
+  canvas.onmouseleave = () => { tip.style.display = 'none'; };
+}
+
+function renderTree(tree) {
+  const byKey = {};
+  tree.nodes.forEach(n => byKey[n.key] = n);
+  const unfiledNode = { key: '__unfiled__', label: 'Unfiled', member_count: tree.unfiled.count,
+    is_leaf: true, child_keys: [], synthetic: true };
+
+  function renderNode(node) {
+    const kids = (node.child_keys || []).map(k => byKey[k]).filter(Boolean);
+    const cls = node.is_leaf ? 'leaf' : '';
+    let out = `<li><div class="node ${cls}"><span class="swatch" style="width:7px;height:7px;border-radius:50%;background:${node.synthetic ? '#8a8f9e' : 'var(--accent)'}"></span>
+      <strong>${escapeHtml(node.label)}</strong> <span class="cnt">${node.member_count} chunk(s)${node.direct_count !== undefined ? `, ${node.direct_count} direct` : ''}</span></div>`;
+    if (kids.length) out += `<ul>${kids.map(renderNode).join('')}</ul>`;
+    out += `</li>`;
+    return out;
+  }
+
+  const roots = tree.roots.map(k => byKey[k]).filter(Boolean);
+  const html = `<ul>${roots.map(renderNode).join('')}${renderNode(unfiledNode)}</ul>`;
+  document.getElementById('pg-tree').innerHTML = html;
+}
+
+// ---------------------------------------------------------------------
+// Step-by-step mode - one session, three independently re-runnable
+// stages (UMAP -> HDBSCAN -> labelling) over the base pass. Roll-up is
+// deliberately not part of this mode (see the "Full run" tab for it) -
+// it's the same UMAP/HDBSCAN/labelling mechanics applied a second time
+// over cluster titles instead of chunks, so stepping through it here
+// wouldn't teach anything the base pass hasn't already shown.
+// ---------------------------------------------------------------------
+
+const STAGE_PARAMS = {
+  umap: ['RANDOM_SEED', 'UMAP_N_COMPONENTS', 'UMAP_N_NEIGHBORS', 'UMAP_MIN_DIST', 'UMAP_METRIC'],
+  hdbscan: ['HDBSCAN_MIN_CLUSTER_SIZE', 'HDBSCAN_MIN_SAMPLES', 'HDBSCAN_CLUSTER_SELECTION_METHOD',
+            'KMEANS_FALLBACK_MIN_CLUSTERS', 'KMEANS_K_DIVISOR', 'KMEANS_K_MIN', 'KMEANS_K_MAX'],
+  label: ['LABEL_SAMPLE_SIZE', 'LABEL_SAMPLE_CHARS'],
+};
+
+let PG_SESSION_ID = null;
+let PG_STEPPER_SEQ = 0;
+
+async function startPgSession() {
+  const btn = document.getElementById('pgs-start-btn');
+  const status = document.getElementById('pgs-status');
+  const body = document.getElementById('pgs-body');
+  btn.disabled = true;
+  status.textContent = 'loading corpus…';
+  const limitVal = document.getElementById('pgs-limit').value;
+  const payload = {};
+  if (limitVal) payload.limit = Number(limitVal);
+  try {
+    const res = await fetch('/api/organize/session/start', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    if (!data.ok) {
+      status.innerHTML = `<span class="badge err">failed</span>`;
+      body.innerHTML = `<pre>${escapeHtml(data.error)}</pre>`;
+      return;
+    }
+    PG_SESSION_ID = data.session_id;
+    status.innerHTML = `<span class="badge ok">ready</span> session ${data.session_id} · ${data.total_chunks} chunk(s)`;
+    body.innerHTML = '';
+    body.appendChild(createStepper({
+      scope: 'base', title: 'Base pass', sub: `${data.total_chunks} chunk(s) in`,
+    }));
+  } catch (e) {
+    btn.disabled = false;
+    status.innerHTML = `<span class="badge err">failed</span>`;
+    body.innerHTML = `<pre>${escapeHtml(String(e))}</pre>`;
+  }
+}
+
+async function pgStepRequest(scope, stage, overrides) {
+  const res = await fetch('/api/organize/session/step', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ session_id: PG_SESSION_ID, scope, stage, overrides }),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'step failed');
+  return data.result;
+}
+
+function pgFieldHtml(idPrefix, name) {
+  const val = PG_DEFAULTS.values[name];
+  let input;
+  if (PG_SELECT[name]) {
+    input = `<select id="${idPrefix}-${name}">${PG_SELECT[name].map(o =>
+      `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  } else if (typeof val === 'number') {
+    const step = PG_INT.has(name) ? '1' : 'any';
+    input = `<input id="${idPrefix}-${name}" type="number" step="${step}" value="${val}">`;
+  } else {
+    input = `<input id="${idPrefix}-${name}" type="text" value="${val}">`;
+  }
+  return `<div class="pg-field"><label>${name}</label>${input}<p class="help">${escapeHtml(PARAM_HELP[name] || '')}</p></div>`;
+}
+
+function pgCollectStageOverrides(idPrefix, names) {
+  const overrides = {};
+  names.forEach(name => {
+    const el = document.getElementById(`${idPrefix}-${name}`);
+    if (!el) return;
+    const defaultVal = PG_DEFAULTS.values[name];
+    let value = el.value;
+    if (typeof defaultVal === 'number') value = Number(value);
+    if (String(value) !== String(defaultVal)) overrides[name] = value;
+  });
+  return overrides;
+}
+
+function renderBaseLabelCards(clusters) {
+  return `<div class="card-list">${clusters.map(c => `
+    <div class="cluster-card">
+      <div class="head"><span class="swatch" style="background:${pgColor(c.cluster)}"></span>${escapeHtml(c.title)}
+        <span class="meta">cluster ${c.cluster} · ${c.size} chunk(s)</span></div>
+      <p class="desc" style="margin:4px 0 0">${escapeHtml(c.description)}</p>
+      <details><summary>${c.sample.length} sample excerpt(s)</summary>
+        <pre>${c.sample.map(x => escapeHtml(x.preview)).join('\n---\n')}</pre></details>
+    </div>`).join('')}</div>`;
+}
+
+// One 3-stage (UMAP -> HDBSCAN -> labelling) panel for one scope. Only
+// "base" (the corpus's chunk embeddings) exists today - see
+// playground.py's Session docstring.
+function createStepper({ scope, title, sub }) {
+  const id = 'st' + (PG_STEPPER_SEQ++);
+  const wrap = document.createElement('div');
+  wrap.className = 'stepper';
+  wrap.innerHTML = `
+    <div class="stepper-head"><span class="title">${escapeHtml(title)}</span><span class="sub">${escapeHtml(sub || scope)}</span></div>
+    <div class="stage" id="${id}-stage-umap">
+      <div class="stage-head"><span class="stage-num">1</span><span class="stage-name">UMAP — position by similarity</span></div>
+      <div class="stage-fields">${STAGE_PARAMS.umap.map(n => pgFieldHtml(id + '-umap', n)).join('')}</div>
+      <div class="stage-run-row"><button class="call">Run UMAP</button><span class="stage-status"></span></div>
+      <div class="stage-out"></div>
+    </div>
+    <div class="stage disabled" id="${id}-stage-hdbscan">
+      <div class="stage-head"><span class="stage-num">2</span><span class="stage-name">HDBSCAN — find dense clusters</span></div>
+      <div class="stage-fields">${STAGE_PARAMS.hdbscan.map(n => pgFieldHtml(id + '-hdbscan', n)).join('')}</div>
+      <div class="stage-run-row"><button class="call">Run HDBSCAN</button><span class="stage-status"></span></div>
+      <div class="stage-out"></div>
+    </div>
+    <div class="stage disabled" id="${id}-stage-label">
+      <div class="stage-head"><span class="stage-num">3</span><span class="stage-name">Labelling — title each group</span></div>
+      <div class="stage-fields">${STAGE_PARAMS.label.map(n => pgFieldHtml(id + '-label', n)).join('')}</div>
+      <div class="stage-run-row"><button class="call">Run labelling</button><span class="stage-status"></span></div>
+      <div class="stage-out"></div>
+    </div>
+  `;
+
+  const stageUmap = wrap.querySelector(`#${id}-stage-umap`);
+  const stageHdb = wrap.querySelector(`#${id}-stage-hdbscan`);
+  const stageLabel = wrap.querySelector(`#${id}-stage-label`);
+
+  // Re-running an earlier stage invalidates everything after it (its
+  // cached output is stale, and the backend already dropped its own
+  // cache for the same reason) - called BEFORE re-enabling the stage
+  // that just finished, so that enable isn't immediately undone.
+  function invalidateAfterUmap() {
+    stageHdb.classList.remove('done');
+    stageLabel.classList.add('disabled'); stageLabel.classList.remove('done');
+  }
+  function invalidateAfterHdbscan() {
+    stageLabel.classList.remove('done');
+  }
+
+  stageUmap.querySelector('button.call').addEventListener('click', async () => {
+    const btn = stageUmap.querySelector('button.call'), status = stageUmap.querySelector('.stage-status'),
+          out = stageUmap.querySelector('.stage-out');
+    btn.disabled = true; status.textContent = 'running…';
+    try {
+      const r = await pgStepRequest(scope, 'umap', pgCollectStageOverrides(id + '-umap', STAGE_PARAMS.umap));
+      status.innerHTML = `<span class="badge ok">ok</span> ${r.n_items} item(s), ${r.n_input_dims}d → 2d (${r.projection})`;
+      const canvasId = id + '-umap-canvas';
+      out.innerHTML = `<canvas class="pg-scatter" id="${canvasId}" width="900" height="300"></canvas>`;
+      drawScatter(canvasId, r.points, { monochrome: true });
+      invalidateAfterUmap();
+      stageUmap.classList.add('done');
+      stageHdb.classList.remove('disabled');
+    } catch (e) {
+      status.innerHTML = `<span class="badge err">failed</span>`;
+      out.innerHTML = `<pre>${escapeHtml(e.message || String(e))}</pre>`;
+    }
+    btn.disabled = false;
+  });
+
+  stageHdb.querySelector('button.call').addEventListener('click', async () => {
+    const btn = stageHdb.querySelector('button.call'), status = stageHdb.querySelector('.stage-status'),
+          out = stageHdb.querySelector('.stage-out');
+    btn.disabled = true; status.textContent = 'running…';
+    try {
+      const r = await pgStepRequest(scope, 'hdbscan', pgCollectStageOverrides(id + '-hdbscan', STAGE_PARAMS.hdbscan));
+      status.innerHTML = `<span class="badge ok">ok</span> ${r.n_clusters} cluster(s), ${r.n_noise} noise${r.used_kmeans_fallback ? ' · k-means fallback' : ''}`;
+      const canvasId = id + '-hdb-canvas';
+      out.innerHTML = `<canvas class="pg-scatter" id="${canvasId}" width="900" height="300"></canvas>`;
+      drawScatter(canvasId, r.points, { monochrome: false });
+      invalidateAfterHdbscan();
+      stageHdb.classList.add('done');
+      stageLabel.classList.remove('disabled');
+    } catch (e) {
+      status.innerHTML = `<span class="badge err">failed</span>`;
+      out.innerHTML = `<pre>${escapeHtml(e.message || String(e))}</pre>`;
+    }
+    btn.disabled = false;
+  });
+
+  stageLabel.querySelector('button.call').addEventListener('click', async () => {
+    const btn = stageLabel.querySelector('button.call'), status = stageLabel.querySelector('.stage-status'),
+          out = stageLabel.querySelector('.stage-out');
+    btn.disabled = true; status.textContent = 'running…';
+    try {
+      const r = await pgStepRequest(scope, 'label', pgCollectStageOverrides(id + '-label', STAGE_PARAMS.label));
+      status.innerHTML = `<span class="badge ok">ok</span>`;
+      stageLabel.classList.add('done');
+      out.innerHTML = renderBaseLabelCards(r.clusters);
+    } catch (e) {
+      status.innerHTML = `<span class="badge err">failed</span>`;
+      out.innerHTML = `<pre>${escapeHtml(e.message || String(e))}</pre>`;
+    }
+    btn.disabled = false;
+  });
+
+  return wrap;
+}
+
+loadTools();
+refreshLog();
+refreshSyncRoots();
+setInterval(refreshLog, 4000);
+</script>
+</body>
+</html>
