@@ -35,6 +35,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    # starlette.testclient's HTTP client.
+    "httpx2>=2.12",
 ]
 
 [tool.setuptools.packages.find]
