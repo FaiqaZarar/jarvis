@@ -23,7 +23,7 @@ dependencies = [
     "tiktoken>=0.7",
 
     # Graph DB - the topic/chunk hierarchy's source of truth.
-    "ladybug>=0.18,<0.19",
+    "ladybug>=0.18,<0.22",
 
     # Embedding + LLM calls (OpenRouter), vector storage.
     "requests>=2.31",
