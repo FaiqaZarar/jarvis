@@ -20,10 +20,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     env:
-      # Qt widgets render without a display; the background service each
-      # test spawns keeps its files in the runner's temp folder.
+      # Qt widgets render without a display.
       QT_QPA_PLATFORM: offscreen
-      JARVIS_DAEMON_HOME: ${{ runner.temp }}\jarvis-home
     steps:
       - uses: actions/checkout@v4
 
@@ -42,4 +40,8 @@ jobs:
           pip install -e ./jarvis/server
 
       - name: Run tests
+        env:
+          # The background service each test spawns keeps its files here,
+          # not in the checkout.
+          JARVIS_DAEMON_HOME: ${{ runner.temp }}\jarvis-home
         run: python -m pytest tests -q
