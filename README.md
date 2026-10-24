@@ -23,7 +23,11 @@ Jarvis is an open-source desktop app that reads your local folders and Google Dr
 
 ## Install
 
-Ready-made installers for Windows, macOS and Linux will be published on the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page with the first release. Until then, run Jarvis from source. You need Python 3.11 or newer.
+Download the installer for Windows, macOS or Linux from the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page. The current release is a preview and is not code-signed yet: its release notes explain how to get past the first-run warning. You add your own [OpenRouter](https://openrouter.ai/keys) API key on first launch.
+
+### From source
+
+You need Python 3.11 or newer.
 
 ```bash
 git clone https://github.com/FaiqaZarar/jarvis.git

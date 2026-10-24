@@ -2,7 +2,7 @@
 
 No version identifier existed anywhere in this repo before this module -
 `.github/workflows/build.yml` computes a release tag
-(`desktop-build-YYYY-MM-DD[-runN]`) but never embedded it into the built
+(`vMAJOR.MINOR.PATCH[-pre]`) but never embedded it into the built
 binary. `build-macos` now writes that exact tag into a plain `VERSION`
 file (`packaging/jarvis_desktop_mac.spec`'s own `datas` entry)
 before invoking PyInstaller, landing it at the root of `sys._MEIPASS` -

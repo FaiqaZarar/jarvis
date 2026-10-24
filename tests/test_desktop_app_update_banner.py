@@ -10,9 +10,9 @@ def test_show_update_available_sets_label_and_shows_buttons(qtbot):
     banner = UpdateBanner()
     qtbot.addWidget(banner)
 
-    banner.show_update_available("desktop-build-2026-02-01")
+    banner.show_update_available("v0.2.0")
 
-    assert "desktop-build-2026-02-01" in banner.message()
+    assert "v0.2.0" in banner.message()
     assert banner._update_button.isVisible()
     assert banner._later_button.isVisible()
     assert not banner._progress.isVisible()
@@ -22,7 +22,7 @@ def test_show_update_available_sets_label_and_shows_buttons(qtbot):
 def test_update_button_click_emits_update_clicked(qtbot):
     banner = UpdateBanner()
     qtbot.addWidget(banner)
-    banner.show_update_available("desktop-build-2026-02-01")
+    banner.show_update_available("v0.2.0")
 
     with qtbot.waitSignal(banner.update_clicked, timeout=1000):
         banner._update_button.click()
@@ -31,7 +31,7 @@ def test_update_button_click_emits_update_clicked(qtbot):
 def test_later_button_click_emits_later_clicked_and_dismisses(qtbot):
     banner = UpdateBanner()
     qtbot.addWidget(banner)
-    banner.show_update_available("desktop-build-2026-02-01")
+    banner.show_update_available("v0.2.0")
 
     with qtbot.waitSignal(banner.later_clicked, timeout=1000):
         banner._later_button.click()

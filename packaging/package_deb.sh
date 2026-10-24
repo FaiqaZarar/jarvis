@@ -4,8 +4,10 @@
 set -euo pipefail
 
 version="${1:?usage: package_deb.sh <release-tag>}"
-# Debian versions must start with a digit; release tags are desktop-build-YYYY-MM-DD[-runN].
-deb_version="0.1.${GITHUB_RUN_NUMBER:-0}"
+# v0.1.0-preview -> 0.1.0~preview: Debian versions start with a digit, and
+# "~" sorts a pre-release before its final release.
+deb_version="${version#v}"
+deb_version="${deb_version//-/\~}"
 pkg=dist/deb/jarvis
 
 rm -rf dist/deb

@@ -89,7 +89,7 @@ builds none of it.
 ## 4. Data model
 
 Content-addressed and stored as a **labeled property graph** physically backed by **SQLite + a vector
-column** (per ticket [03](issues/03-organization-model-grilling.md)). Choosing a property graph now
+column** (per ticket 03). Choosing a property graph now
 while constraining the engine to emit a *tree* keeps the KG-future seam open as a purely additive
 migration (add `Entity` nodes + typed relations later) without paying a DAG's navigation cost today.
 
@@ -144,7 +144,7 @@ silent architectural drift — recorded here so this section matches what is act
 
 ## 5. Ingestion & manual re-sync pipeline
 
-Full rationale: ticket [04](issues/04-ingestion-resync-pipeline-grilling.md).
+Full rationale: ticket 04.
 
 ### 5.1 Pipeline stages (canonical order)
 
@@ -214,8 +214,8 @@ organize is a single global pass.
 ## 6. Organization engine — the evolving hierarchy
 
 The crux differentiator. Full rationale: ticket
-[03](issues/03-organization-model-grilling.md); technique survey: research
-[01](research/01-hierarchy-techniques.md).
+03; technique survey: research
+01.
 
 **Shape.** A strict **single-parent tree** of `Topic` nodes over the property-graph store. Multi-parent
 (DAG) is a KG-era feature; cross-topic relatedness is served by the `related` MCP tool, never by
@@ -265,7 +265,7 @@ objective function** in MVP — improvement is simply the outcome of re-clusteri
 corpus plus identity reconciliation. *Do not build an optimizer for v1.*
 
 **Constants** (centroid-vs-Jaccard weighting, τ, `min_cluster_size`, per-level placement threshold) are
-**prototype-tuned, not guessed** — see ticket [08](issues/08-identity-reconciliation-prototype.md) and
+**prototype-tuned, not guessed** — see ticket 08 and
 §9.
 
 **MVP boundary.** *In:* build the hierarchy (Part 1) + evolve it on manual re-sync (Part 2a). *Out
@@ -277,7 +277,7 @@ the full KG, and any multi-parent/DAG topics.
 ## 7. MCP interface — tool contracts
 
 The primary product surface. Full rationale: ticket
-[05](issues/05-mcp-tool-contracts-grilling.md). **The caller is an LLM**, so contracts are
+05. **The caller is an LLM**, so contracts are
 token-conscious: a hit is **self-sufficient at the chunk** (full chunk text inline) but never inlines
 anything *above* the chunk (that's `get_document`'s job).
 
@@ -355,11 +355,11 @@ The pipeline is **connector-agnostic**: a connector's only job is to enumerate i
 emit **(normalized-Markdown, metadata, stable `source_id`)** plus a **change-detection** signal feeding
 the two-phase re-sync (§5). Everything downstream (hash, dedup, chunk, embed, organize, index) is
 shared. Connector selection: community poll, ticket
-[06](issues/06-community-poll-connectors-task.md).
+06.
 
 ### 8.1 Google Drive
 
-Research: [09](issues/09-google-drive-connector-feasibility-research.md).
+Research: 09.
 
 - **Source → MD.** Google **Docs** via `files.export(text/markdown)` (10 MB cap). Native **`.docx`** and
   **clean PDFs** via `alt=media` download → MarkItDown / Docling (per ticket 02). **Sheets and Slides
@@ -379,7 +379,7 @@ Research: [09](issues/09-google-drive-connector-feasibility-research.md).
 
 ### 8.2 Drive File System (local disk)
 
-Research: [10](issues/10-drive-file-system-connector-feasibility-research.md).
+Research: 10.
 
 - **Scope & selection.** User points the connector at **watched root folder(s)**. Recurse with
   `os.walk(followlinks=False)`, **skip dotfiles**, honor `.gitignore`-style ignores (`pathspec`).
@@ -398,7 +398,7 @@ Research: [10](issues/10-drive-file-system-connector-feasibility-research.md).
 
 ### 8.3 Notion
 
-Research: [11](issues/11-notion-connector-feasibility-research.md).
+Research: 11.
 
 - **Source → MD (don't hand-roll).** Use the first-party **`GET /v1/pages/{id}/markdown`** — one call
   returns the page body as enhanced Markdown (replaces a recursive block-crawl / `notion-to-md`).
@@ -451,7 +451,7 @@ The developer owns the *how*; these are the reactions-to-research defaults, not 
   low-temp LLM labeling with prior-label hints.
 - **Ranking:** hybrid **RRF** over BM25 (SQLite FTS5) + vector KNN.
 - **Reconciliation constants** — **prototype-tune, don't guess.** Ticket
-  [08](issues/08-identity-reconciliation-prototype.md) tunes on sample data: centroid-cosine vs.
+  08 tunes on sample data: centroid-cosine vs.
   membership-Jaccard weighting, match threshold τ, `min_cluster_size`, and the per-level placement
   threshold; and reports the resulting `Unfiled` rate. **If ticket 08 lands before build, feed its
   numbers here; if not, ship the mechanism with "constants prototype-tuned" and tune during build.**
@@ -515,4 +515,4 @@ Ordered roughly by adjacency to the MVP. Each preserved by a seam built in v1.
 ---
 
 *Synthesized from Wayfinder tickets 01–06 and connector research 09–11. Reconciliation constants
-pending ticket [08](issues/08-identity-reconciliation-prototype.md) (non-blocking).*
+pending ticket 08 (non-blocking).*

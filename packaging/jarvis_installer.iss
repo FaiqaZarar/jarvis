@@ -13,7 +13,7 @@
 
 #define AppName "Jarvis"
 ; Overridable via `ISCC /DAppVersion=... jarvis_installer.iss` - build.yml
-; passes the CI run number so Add/Remove Programs shows which build is
+; passes the release version so Add/Remove Programs shows which build is
 ; actually installed, instead of a constant that never changes.
 #ifndef AppVersion
   #define AppVersion "0.1.0-dev"

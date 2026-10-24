@@ -3,16 +3,13 @@
 Desktop builds are published as releases of the public repo
 (`_RELEASES_REPO` below) by `.github/workflows/build.yml`; this module
 polls it unauthenticated. **Keep `_RELEASES_REPO` in sync with
-`build.yml`'s own `RELEASES_REPO` env var** - nothing enforces the two
-match automatically.
+the repo `build.yml` runs in** - releases are published there.
 
-Version comparison is plain string inequality on the release tag, not
-semver - matching the existing non-semver `desktop-build-YYYY-MM-DD[-runN]`
-scheme (`build.yml`'s `compute-tag` job), which already sorts correctly
-lexicographically except for one known, accepted gap: a same-day 10th+
-release breaks ordering (`"...-run10" < "...-run9"` as strings). Cheap
-fix if that ever actually happens is zero-padding the run suffix in
-`build.yml`, not reaching for semver for a scheme that isn't semver.
+Release tags are `vMAJOR.MINOR.PATCH`, optionally with a pre-release
+suffix (`v0.1.0-preview`); `_version_key()` orders them numerically, with
+a final release above its own pre-releases. A build that is itself a
+pre-release is offered newer pre-releases too; a final build only ever
+sees final releases. A tag outside that scheme is never offered.
 
 Each release carries one asset per platform (`build.yml` uploads both
 `Jarvis.dmg` and `JarvisSetup.exe`) - `_asset_suffix_for_platform()`
@@ -26,6 +23,7 @@ matching asset all just mean "no update found," matching the decision
 that the automatic, on-launch check stays completely silent on failure.
 """
 
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
@@ -33,8 +31,8 @@ from typing import Any, Callable, Optional
 import requests
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 
-_RELEASES_REPO = "FaiqaZarar/jarvis"  # keep in sync with build.yml's RELEASES_REPO
-_LATEST_RELEASE_URL = f"https://api.github.com/repos/{_RELEASES_REPO}/releases/latest"
+_RELEASES_REPO = "FaiqaZarar/jarvis"  # the repo build.yml runs in and releases to
+_RELEASES_URL = f"https://api.github.com/repos/{_RELEASES_REPO}/releases?per_page=20"
 _REQUEST_TIMEOUT_S = 5.0
 # GitHub's API returns 403 for an anonymous request with no User-Agent at all.
 _USER_AGENT = "jarvis-desktop-updater"
@@ -43,7 +41,7 @@ _USER_AGENT = "jarvis-desktop-updater"
 def releases_page_url() -> str:
     """The human-facing releases page - "Download manually" opens this
     in a browser when an automatic install fails (DESIGN.md §6)."""
-    return f"https://github.com/{_RELEASES_REPO}/releases/latest"
+    return f"https://github.com/{_RELEASES_REPO}/releases"
 
 
 @dataclass(frozen=True)
@@ -68,9 +66,32 @@ def _asset_suffix_for_platform() -> Optional[str]:
     return None
 
 
-def check_for_update(current_version: Optional[str]) -> Optional[UpdateInfo]:
-    if not current_version:
+def _version_key(tag: Any) -> Optional[tuple]:
+    """Sort key for `v1.2.3` / `v1.2.3-preview`, or None for any other tag."""
+    if not isinstance(tag, str):
         return None
+    m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?", tag)
+    if not m:
+        return None
+    major, minor, patch, pre = m.groups()
+    return (int(major), int(minor), int(patch)), pre is None, pre or ""
+
+
+def _matching_asset(release: dict, suffix: str) -> Optional[dict]:
+    assets = release.get("assets") or []
+    asset = next(
+        (a for a in assets if isinstance(a, dict) and str(a.get("name", "")).endswith(suffix)), None,
+    )
+    if asset is None or not asset.get("browser_download_url"):
+        return None
+    return asset
+
+
+def check_for_update(current_version: Optional[str]) -> Optional[UpdateInfo]:
+    current_key = _version_key(current_version)
+    if current_key is None:
+        return None
+    on_prerelease = not current_key[1]
 
     suffix = _asset_suffix_for_platform()
     if suffix is None:
@@ -78,31 +99,38 @@ def check_for_update(current_version: Optional[str]) -> Optional[UpdateInfo]:
 
     try:
         resp = requests.get(
-            _LATEST_RELEASE_URL,
+            _RELEASES_URL,
             headers={"User-Agent": _USER_AGENT, "Accept": "application/vnd.github+json"},
             timeout=_REQUEST_TIMEOUT_S,
         )
         resp.raise_for_status()
-        body = resp.json()
+        releases = resp.json()
     except (requests.RequestException, ValueError):
         return None
-
-    tag = body.get("tag_name")
-    if not tag or not isinstance(tag, str) or tag <= current_version:
+    if not isinstance(releases, list):
         return None
 
-    assets = body.get("assets") or []
-    matched_asset = next(
-        (a for a in assets if isinstance(a, dict) and str(a.get("name", "")).endswith(suffix)), None,
-    )
-    if matched_asset is None or not matched_asset.get("browser_download_url"):
+    best = None
+    for release in releases:
+        if not isinstance(release, dict) or release.get("draft"):
+            continue
+        if release.get("prerelease") and not on_prerelease:
+            continue
+        key = _version_key(release.get("tag_name"))
+        if key is None or key <= current_key:
+            continue
+        asset = _matching_asset(release, suffix)
+        if asset is not None and (best is None or key > best[0]):
+            best = (key, release, asset)
+    if best is None:
         return None
 
+    _, release, asset = best
     return UpdateInfo(
-        tag=tag,
-        download_url=matched_asset["browser_download_url"],
-        html_url=str(body.get("html_url", "")),
-        asset_name=str(matched_asset.get("name", "")),
+        tag=release["tag_name"],
+        download_url=asset["browser_download_url"],
+        html_url=str(release.get("html_url", "")),
+        asset_name=str(asset.get("name", "")),
     )
 
 

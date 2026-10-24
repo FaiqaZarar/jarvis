@@ -37,14 +37,21 @@ class _FakeResponse:
         return self._json_body
 
 
-def _release_body(tag, *, dmg_url="https://example.com/Jarvis.dmg", assets=None):
+def _release(tag, *, dmg_url="https://example.com/Jarvis.dmg", assets=None, prerelease=False, draft=False):
     return {
         "tag_name": tag,
         "html_url": f"https://example.com/releases/{tag}",
+        "prerelease": prerelease,
+        "draft": draft,
         "assets": assets if assets is not None else [
             {"name": "Jarvis.dmg", "browser_download_url": dmg_url},
         ],
     }
+
+
+def _release_body(tag, **kwargs):
+    """The releases list endpoint's body, holding just this one release."""
+    return [_release(tag, **kwargs)]
 
 
 def test_returns_none_without_calling_requests_when_current_version_is_none(monkeypatch):
@@ -59,15 +66,15 @@ def test_returns_none_without_calling_requests_when_current_version_is_none(monk
 def test_finds_a_newer_release(monkeypatch):
     monkeypatch.setattr(
         update_checker.requests, "get",
-        lambda *a, **k: _FakeResponse(json_body=_release_body("desktop-build-2026-02-01")),
+        lambda *a, **k: _FakeResponse(json_body=_release_body("v0.2.0")),
     )
 
-    result = check_for_update("desktop-build-2026-01-01")
+    result = check_for_update("v0.1.0")
 
     assert result == UpdateInfo(
-        tag="desktop-build-2026-02-01",
+        tag="v0.2.0",
         download_url="https://example.com/Jarvis.dmg",
-        html_url="https://example.com/releases/desktop-build-2026-02-01",
+        html_url="https://example.com/releases/v0.2.0",
         asset_name="Jarvis.dmg",
     )
 
@@ -75,28 +82,28 @@ def test_finds_a_newer_release(monkeypatch):
 def test_returns_none_when_latest_tag_equals_current(monkeypatch):
     monkeypatch.setattr(
         update_checker.requests, "get",
-        lambda *a, **k: _FakeResponse(json_body=_release_body("desktop-build-2026-01-01")),
+        lambda *a, **k: _FakeResponse(json_body=_release_body("v0.1.0")),
     )
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_returns_none_when_latest_tag_is_older(monkeypatch):
     monkeypatch.setattr(
         update_checker.requests, "get",
-        lambda *a, **k: _FakeResponse(json_body=_release_body("desktop-build-2025-12-01")),
+        lambda *a, **k: _FakeResponse(json_body=_release_body("v0.0.9")),
     )
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_returns_none_when_release_has_no_dmg_asset(monkeypatch):
     monkeypatch.setattr(
         update_checker.requests, "get",
-        lambda *a, **k: _FakeResponse(json_body=_release_body("desktop-build-2026-02-01", assets=[])),
+        lambda *a, **k: _FakeResponse(json_body=_release_body("v0.2.0", assets=[])),
     )
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_returns_none_on_malformed_json(monkeypatch):
@@ -106,7 +113,7 @@ def test_returns_none_on_malformed_json(monkeypatch):
 
     monkeypatch.setattr(update_checker.requests, "get", lambda *a, **k: _BadResponse())
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_returns_none_on_a_raised_request_exception(monkeypatch):
@@ -117,7 +124,7 @@ def test_returns_none_on_a_raised_request_exception(monkeypatch):
 
     monkeypatch.setattr(update_checker.requests, "get", _boom)
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_returns_none_on_a_non_2xx_status(monkeypatch):
@@ -128,6 +135,46 @@ def test_returns_none_on_a_non_2xx_status(monkeypatch):
 
     monkeypatch.setattr(update_checker.requests, "get", _fake_get)
 
+    assert check_for_update("v0.1.0") is None
+
+
+def _serve(monkeypatch, *releases):
+    monkeypatch.setattr(update_checker.requests, "get", lambda *a, **k: _FakeResponse(json_body=list(releases)))
+
+
+def test_compares_versions_numerically_not_as_strings(monkeypatch):
+    _serve(monkeypatch, _release("v0.10.0"))
+    assert check_for_update("v0.9.0").tag == "v0.10.0"
+
+
+def test_a_final_release_is_newer_than_its_own_prerelease(monkeypatch):
+    _serve(monkeypatch, _release("v0.1.0"))
+    assert check_for_update("v0.1.0-preview").tag == "v0.1.0"
+
+
+def test_picks_the_newest_of_several_releases(monkeypatch):
+    _serve(monkeypatch, _release("v0.2.0"), _release("v0.3.0"), _release("v0.2.5"))
+    assert check_for_update("v0.1.0").tag == "v0.3.0"
+
+
+def test_a_final_build_is_never_offered_a_prerelease(monkeypatch):
+    _serve(monkeypatch, _release("v0.3.0-preview", prerelease=True))
+    assert check_for_update("v0.2.0") is None
+
+
+def test_a_prerelease_build_is_offered_a_newer_prerelease(monkeypatch):
+    _serve(monkeypatch, _release("v0.1.0-preview.2", prerelease=True))
+    assert check_for_update("v0.1.0-preview").tag == "v0.1.0-preview.2"
+
+
+def test_drafts_are_ignored(monkeypatch):
+    _serve(monkeypatch, _release("v0.2.0", draft=True))
+    assert check_for_update("v0.1.0") is None
+
+
+def test_tags_outside_the_version_scheme_are_ignored(monkeypatch):
+    _serve(monkeypatch, _release("desktop-build-2026-10-24"))
+    assert check_for_update("v0.1.0") is None
     assert check_for_update("desktop-build-2026-01-01") is None
 
 
@@ -160,7 +207,7 @@ def test_returns_none_on_an_unsupported_platform_without_calling_requests(monkey
 
     monkeypatch.setattr(update_checker.requests, "get", _must_not_be_called)
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 def test_finds_the_windows_asset_on_win32_and_ignores_the_mac_one(monkeypatch):
@@ -168,7 +215,7 @@ def test_finds_the_windows_asset_on_win32_and_ignores_the_mac_one(monkeypatch):
     monkeypatch.setattr(
         update_checker.requests, "get",
         lambda *a, **k: _FakeResponse(json_body=_release_body(
-            "desktop-build-2026-02-01",
+            "v0.2.0",
             assets=[
                 {"name": "Jarvis.dmg", "browser_download_url": "https://example.com/Jarvis.dmg"},
                 {"name": "JarvisSetup.exe", "browser_download_url": "https://example.com/JarvisSetup.exe"},
@@ -176,12 +223,12 @@ def test_finds_the_windows_asset_on_win32_and_ignores_the_mac_one(monkeypatch):
         )),
     )
 
-    result = check_for_update("desktop-build-2026-01-01")
+    result = check_for_update("v0.1.0")
 
     assert result == UpdateInfo(
-        tag="desktop-build-2026-02-01",
+        tag="v0.2.0",
         download_url="https://example.com/JarvisSetup.exe",
-        html_url="https://example.com/releases/desktop-build-2026-02-01",
+        html_url="https://example.com/releases/v0.2.0",
         asset_name="JarvisSetup.exe",
     )
 
@@ -190,10 +237,10 @@ def test_returns_none_on_win32_when_release_has_only_a_dmg_asset(monkeypatch):
     monkeypatch.setattr(update_checker.sys, "platform", "win32")
     monkeypatch.setattr(
         update_checker.requests, "get",
-        lambda *a, **k: _FakeResponse(json_body=_release_body("desktop-build-2026-02-01")),
+        lambda *a, **k: _FakeResponse(json_body=_release_body("v0.2.0")),
     )
 
-    assert check_for_update("desktop-build-2026-01-01") is None
+    assert check_for_update("v0.1.0") is None
 
 
 # ---------------------------------------------------------------------
@@ -207,17 +254,17 @@ def test_worker_runs_on_a_different_thread_than_the_caller(qtbot, monkeypatch):
 
     def _fake_get(*a, **k):
         seen["thread_id"] = threading.get_ident()
-        return _FakeResponse(json_body=_release_body("desktop-build-2026-02-01"))
+        return _FakeResponse(json_body=_release_body("v0.2.0"))
 
     monkeypatch.setattr(update_checker.requests, "get", _fake_get)
 
     pool = QThreadPool()
     received = []
 
-    update_checker.run_update_check(pool, "desktop-build-2026-01-01", on_result=received.append)
+    update_checker.run_update_check(pool, "v0.1.0", on_result=received.append)
 
     qtbot.waitUntil(lambda: len(received) == 1, timeout=2000)
-    assert received[0].tag == "desktop-build-2026-02-01"
+    assert received[0].tag == "v0.2.0"
     assert seen["thread_id"] != calling_thread_id
 
 

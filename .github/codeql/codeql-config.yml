@@ -1,0 +1,8 @@
+name: Jarvis CodeQL config
+
+# The tests plant fake secrets on purpose (tests/test_telemetry_privacy.py
+# checks the privacy filter keeps them out of telemetry). Scanning them makes
+# CodeQL report those fake secrets as logged by the real code.
+paths-ignore:
+  - tests
+  - jarvis_cloud/tests
