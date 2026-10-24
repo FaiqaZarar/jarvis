@@ -142,7 +142,7 @@ jobs:
 
       - name: Package into a .deb
         working-directory: packaging
-        run: ./package_deb.sh "${{ needs.check-version.outputs.tag }}"
+        run: bash package_deb.sh "${{ needs.check-version.outputs.tag }}"
 
       - uses: actions/upload-artifact@v4
         with:
