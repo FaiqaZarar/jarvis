@@ -7,6 +7,7 @@ from PySide6.QtCore import QThreadPool
 
 from jarvis.modules.cloud import client as cloud_client
 from jarvis.modules.cloud import session_store
+from jarvis_server.internal import env_config
 from jarvis.modules.desktop_app import error_reporting
 from jarvis.modules.desktop_app.error_presentation import DaemonStatusBanner
 from jarvis.modules.desktop_app.views.connectors_view import ConnectorsView
@@ -17,6 +18,9 @@ from jarvis.modules.desktop_app.views.settings_view import SettingsView
 def _no_cloud_server(monkeypatch):
     monkeypatch.setattr(cloud_client, "_BASE_URL", "")
     monkeypatch.setattr(session_store, "load_session", lambda: None)
+    # Not about the first-run API key screen: without a key (a fresh
+    # checkout, CI) MainWindow would open that dialog and block forever.
+    monkeypatch.setattr(env_config, "has_embedding_api_key", lambda: True)
 
 
 def test_no_server_means_not_configured():

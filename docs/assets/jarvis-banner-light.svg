@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-label="Jarvis: your files and notes in one place, so Claude can use them">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f1f5ff"/>
+      <stop offset="1" stop-color="#eef2fb"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.336" cy="0.5" r="0.42">
+      <stop offset="0" stop-color="#3157D5" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#3157D5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.88" cy="0.15" r="0.4">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ringGlow">
+      <stop offset="0" stop-color="#3157D5" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#3157D5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b8def"/>
+      <stop offset="1" stop-color="#3157D5"/>
+    </linearGradient>
+    <linearGradient id="flow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3157D5" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#3157D5" stop-opacity="0.95"/>
+    </linearGradient>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.1" fill="#3157D5" fill-opacity="0.07"/>
+    </pattern>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000000" flood-opacity="0.1"/>
+    </filter>
+    <clipPath id="frame"><rect width="1280" height="400" rx="28"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1280" height="400" fill="url(#bg)"/>
+    <rect width="1280" height="400" fill="url(#grid)"/>
+    <rect width="1280" height="400" fill="url(#glow1)"/>
+    <rect width="1280" height="400" fill="url(#glow2)"/>
+    <line x1="1060" y1="52" x2="1118" y2="34" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1118" y1="34" x2="1170" y2="70" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1170" y1="70" x2="1228" y2="46" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1170" y1="70" x2="1140" y2="112" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1140" y1="112" x2="1206" y2="128" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1206" y1="128" x2="1252" y2="92" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><line x1="1228" y1="46" x2="1252" y2="92" stroke="#3157D5" stroke-opacity="0.21" stroke-width="1"/><circle cx="1060" cy="52" r="4.5" fill="#3157D5" fill-opacity="0.35"/><circle cx="1118" cy="34" r="3" fill="#3157D5" fill-opacity="0.35"/><circle cx="1170" cy="70" r="3" fill="#3157D5" fill-opacity="0.35"/><circle cx="1228" cy="46" r="4.5" fill="#3157D5" fill-opacity="0.35"/><circle cx="1140" cy="112" r="3" fill="#3157D5" fill-opacity="0.35"/><circle cx="1206" cy="128" r="3" fill="#3157D5" fill-opacity="0.35"/><circle cx="1252" cy="92" r="4.5" fill="#3157D5" fill-opacity="0.35"/>
+    <path d="M154 108 C224 108, 278 173.0, 338 173.0" fill="none" stroke="url(#flow)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 9"><animate attributeName="stroke-dashoffset" from="22" to="0" dur="1.6s" repeatCount="indefinite"/></path><path d="M270 182 C340 182, 278 191.0, 338 191.0" fill="none" stroke="url(#flow)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 9"><animate attributeName="stroke-dashoffset" from="22" to="0" dur="1.6s" repeatCount="indefinite"/></path><path d="M148 276 C218 276, 278 209.0, 338 209.0" fill="none" stroke="url(#flow)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 9"><animate attributeName="stroke-dashoffset" from="22" to="0" dur="1.6s" repeatCount="indefinite"/></path><path d="M276 312 C346 312, 278 227.0, 338 227.0" fill="none" stroke="url(#flow)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 9"><animate attributeName="stroke-dashoffset" from="22" to="0" dur="1.6s" repeatCount="indefinite"/></path>
+    <g transform="rotate(-9 112.0 108.0)" filter="url(#shadow)"><path d="M80 58 h46 l28 28 v62 q0 10 -10 10 h-64 q-10 0 -10 -10 v-80 q0 -10 10 -10 z" fill="#ffffff" stroke="#cdd7ea" stroke-width="1.5"/><path d="M126 58 v18 q0 10 10 10 h18" fill="none" stroke="#cdd7ea" stroke-width="1.5"/><rect x="84" y="98" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="84" y="109" width="42" height="4" rx="2" fill="#d9e1f0"/><rect x="84" y="120" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="82" y="72" width="28" height="18" rx="9" fill="#60a5fa" opacity="0.18"/><text x="96.0" y="85" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="0.5">MD</text></g><g transform="rotate(7 220.0 182.0)" filter="url(#shadow)"><path d="M188 132 h46 l28 28 v62 q0 10 -10 10 h-64 q-10 0 -10 -10 v-80 q0 -10 10 -10 z" fill="#ffffff" stroke="#cdd7ea" stroke-width="1.5"/><path d="M234 132 v18 q0 10 10 10 h18" fill="none" stroke="#cdd7ea" stroke-width="1.5"/><rect x="192" y="172" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="192" y="183" width="42" height="4" rx="2" fill="#d9e1f0"/><rect x="192" y="194" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="190" y="146" width="36" height="18" rx="9" fill="#f87171" opacity="0.18"/><text x="208.0" y="159" font-size="11" font-weight="700" fill="#f87171" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="0.5">PDF</text></g><g transform="rotate(-4 106.0 276.0)" filter="url(#shadow)"><path d="M74 226 h46 l28 28 v62 q0 10 -10 10 h-64 q-10 0 -10 -10 v-80 q0 -10 10 -10 z" fill="#ffffff" stroke="#cdd7ea" stroke-width="1.5"/><path d="M120 226 v18 q0 10 10 10 h18" fill="none" stroke="#cdd7ea" stroke-width="1.5"/><rect x="78" y="266" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="78" y="277" width="42" height="4" rx="2" fill="#d9e1f0"/><rect x="78" y="288" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="76" y="240" width="44" height="18" rx="9" fill="#38bdf8" opacity="0.18"/><text x="98.0" y="253" font-size="11" font-weight="700" fill="#38bdf8" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="0.5">DOCX</text></g><g transform="rotate(5 226.0 312.0)" filter="url(#shadow)"><path d="M184 280 q0 -10 10 -10 h24 l10 10 h30 q10 0 10 10 v62 q0 10 -10 10 h-64 q-10 0 -10 -10 z" fill="#ffffff" stroke="#cdd7ea" stroke-width="1.5"/><rect x="198" y="302" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="198" y="313" width="42" height="4" rx="2" fill="#d9e1f0"/><rect x="198" y="324" width="56" height="4" rx="2" fill="#d9e1f0"/><rect x="196" y="278" width="52" height="18" rx="9" fill="#34d399" opacity="0.18"/><text x="222.0" y="291" font-size="11" font-weight="700" fill="#34d399" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="0.5">DRIVE</text></g>
+    
+  <circle cx="430" cy="200" r="132" fill="url(#ringGlow)"/>
+  <circle cx="430" cy="200" r="104" fill="none" stroke="#3157D5" stroke-opacity="0.28" stroke-width="1.2" stroke-dasharray="3 7"/>
+  <g>
+    <animateTransform attributeName="transform" type="rotate" from="0 430 200" to="360 430 200" dur="40s" repeatCount="indefinite"/>
+    <circle cx="520.1" cy="148.0" r="7" fill="#7aa4f2"/><circle cx="420.9" cy="303.6" r="6" fill="#a78bfa"/><circle cx="332.3" cy="164.4" r="6.5" fill="#34d399"/><circle cx="482.0" cy="109.9" r="5" fill="#f472b6"/>
+  </g>
+  <circle cx="430" cy="200" r="72" fill="none" stroke="url(#ring)" stroke-width="13" stroke-linecap="round"
+    stroke-dasharray="352 100" transform="rotate(-56 430 200)" filter="url(#softGlow)"/>
+  <text x="430" y="233" font-size="96" font-weight="700" fill="#0f172a" text-anchor="middle"
+    font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="-2">J</text>
+    <text x="588" y="176" font-size="86" font-weight="700" fill="#0f172a" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" letter-spacing="-2.5">Jarvis</text>
+    <text x="592" y="226" font-size="25" fill="#475569" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif">Your files and notes in one place, so Claude can use them.</text>
+    <rect x="592" y="262" width="127" height="34" rx="17" fill="#eaf0ff" stroke="#c9d6fb"/><text x="656" y="284" font-size="16" font-weight="600" fill="#2747b8" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif">Local-first</text><rect x="731.2" y="262" width="146" height="34" rx="17" fill="#eaf0ff" stroke="#c9d6fb"/><text x="804" y="284" font-size="16" font-weight="600" fill="#2747b8" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif">Hybrid search</text><rect x="888.8000000000001" y="262" width="173" height="34" rx="17" fill="#eaf0ff" stroke="#c9d6fb"/><text x="975" y="284" font-size="16" font-weight="600" fill="#2747b8" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif">Automatic topics</text><rect x="1074.0" y="262" width="182" height="34" rx="17" fill="#eaf0ff" stroke="#c9d6fb"/><text x="1165" y="284" font-size="16" font-weight="600" fill="#2747b8" text-anchor="middle" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif">Works with Claude</text>
+  </g>
+  <rect x="0.5" y="0.5" width="1279" height="399" rx="28" fill="none" stroke="#dbe3f1"/>
+</svg>
