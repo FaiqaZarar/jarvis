@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Questions and ideas
+    url: https://github.com/FaiqaZarar/jarvis/discussions
+    about: Ask how to use Jarvis or share an idea before opening an issue.
   - name: Report a security vulnerability
     url: https://github.com/FaiqaZarar/jarvis/security/advisories/new
     about: Please report security issues privately, not as a public issue.

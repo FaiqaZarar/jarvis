@@ -1,5 +1,10 @@
 # Jarvis
 
+[![Tests](https://github.com/FaiqaZarar/jarvis/actions/workflows/tests.yml/badge.svg)](https://github.com/FaiqaZarar/jarvis/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![MCP server](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](https://modelcontextprotocol.io)
+
 **Jarvis keeps your files and notes in one place, so Claude can use them.**
 
 Jarvis is a desktop app that reads your local folders and Google Drive, keeps them in a private library on your own computer, and organizes them into topics automatically. Claude Desktop (or any MCP client) can then search that library, browse its topics and cite exactly which files an answer came from.
@@ -31,9 +36,7 @@ A small background service owns the library. The desktop app, the command-line t
 
 ### Install
 
-Download the latest installer for Windows, macOS or Linux from the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page.
-
-Or run it from source (Python 3.11 or newer):
+Ready-made installers for Windows, macOS and Linux will be published on the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page with the first release. Until then, run it from source (Python 3.11 or newer):
 
 ```bash
 git clone https://github.com/FaiqaZarar/jarvis.git

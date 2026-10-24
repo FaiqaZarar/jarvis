@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Windows first: it's the platform the full suite is proven on and the
+    # one most testers use.
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      # Qt widgets render without a display; the background service each
+      # test spawns keeps its files in the runner's temp folder.
+      QT_QPA_PLATFORM: offscreen
+      JARVIS_DAEMON_HOME: ${{ runner.temp }}\jarvis-home
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            jarvis/server/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ./jarvis/server
+
+      - name: Run tests
+        run: python -m pytest tests -q
