@@ -335,3 +335,18 @@ def test_telemetry_toggle_is_saved_and_switches_telemetry_off(tmp_path, monkeypa
     env_config.save_telemetry_enabled(True, daemon_home=tmp_path)
     assert env_config.telemetry_enabled()
     assert resolve_config() is not None
+
+
+def test_a_frozen_build_never_searches_the_current_directory_for_a_dotenv(monkeypatch, tmp_path):
+    searched = []
+
+    def _recording_load_dotenv(dotenv_path=None, *args, **kwargs):
+        searched.append(dotenv_path)
+        return False
+
+    monkeypatch.setattr(env_config, "load_dotenv", _recording_load_dotenv)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+
+    env_config.load_env(daemon_home=tmp_path)
+
+    assert searched == [tmp_path / ".env"]

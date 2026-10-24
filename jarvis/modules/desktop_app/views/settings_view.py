@@ -215,7 +215,7 @@ class SettingsView(QWidget):
         _unused_form, self._api_key, self._model, self._api_base = build_embedding_fields(current)
 
         group = QGroupBox("API key")
-        helper_label = QLabel("Jarvis uses a shared key during testing. You can add your own.")
+        helper_label = QLabel("Get a key from openrouter.ai. Jarvis saves it on this computer.")
         helper_label.setWordWrap(True)
         save_button = QPushButton("Save")
         save_button.setProperty("buttonKind", "primary")

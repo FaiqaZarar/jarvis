@@ -13,13 +13,17 @@ app-data directory already used for the db/graph/log files
 (`jarvis_server.internal.db.connection`, `jarvis_server.internal.graph_db.graph_db`),
 not a location inside the frozen build itself.
 
-**Dev mode is untouched, on purpose.** `load_env()` always tries a real
-repo-relative `.env` first (`load_dotenv()`'s own cwd-based upward
-search, unchanged) - a developer running from source with a `.env`
-already in place keeps working exactly as before. The packaged location
-is a second, additional fallback, tried only after, and never overrides
-a value the dev-mode search already found (`load_dotenv`'s own
+**Dev mode is untouched, on purpose.** From source, `load_env()` tries a
+real repo-relative `.env` first (`load_dotenv()`'s own upward search) - a
+developer with a `.env` already in place keeps working exactly as before.
+The packaged location is a second fallback, tried only after, and never
+overrides a value the dev-mode search already found (`load_dotenv`'s own
 `override=False` default) - so if both exist, dev mode wins.
+
+A frozen build skips the dev-mode search entirely: there `load_dotenv()`
+searches upward from the current directory, so launching the installed
+app from a terminal inside any project with its own `.env` would quietly
+pick up that project's key.
 
 Both `jarvis_server.daemon.server` (the daemon process) and
 `jarvis.modules.desktop_app.app`/`main_window` (the GUI process, to
@@ -29,13 +33,11 @@ configured," so the two can't drift out of sync.
 
 `load_env()` also applies the bundled Google Drive OAuth client
 (`_apply_bundled_google_oauth_client`, docs/desktop-app-drive-connector-
-DESIGN.md §4) and, for the test phase, a bundled shared embedding API key
-(`_apply_bundled_embedding_key`) - one shared value for every tester
-rather than a per-user secret, so `SettingsDialog`'s first-run gate
-(`has_embedding_api_key()`) is already satisfied before a tester ever
-sees it, the same way the Google client needs no first-run screen of its
-own. Test-phase only: testers are expected to bring their own key once
-this moves past that phase.
+DESIGN.md §4) and a bundled embedding API key
+(`_apply_bundled_embedding_key`), when a build has them. Public release
+builds bundle no embedding key (`packaging/write_bundled_settings.py`), so
+`SettingsDialog`'s first-run gate (`has_embedding_api_key()`) asks each
+user for their own.
 """
 
 import os
@@ -132,7 +134,8 @@ def load_env(daemon_home: Optional[Path] = None) -> None:
     order matters. Finally, the bundled Google Drive OAuth client
     (`_apply_bundled_google_oauth_client`) - last, so either `.env`
     source above always wins if it already set those two vars."""
-    load_dotenv()
+    if not getattr(sys, "frozen", False):
+        load_dotenv()
     packaged = _packaged_env_path(daemon_home)
     if packaged is not None:
         load_dotenv(packaged)

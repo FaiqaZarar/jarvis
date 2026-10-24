@@ -169,7 +169,7 @@ Fully round, 12 px, weight 600. Synced (`SUCCESS`), Syncing (`ACCENT`), Needs at
 - **Variants:** a full card (the main content of the empty Sources page) and a compact strip above the list once partly done. Both share the same item states.
 - **Items:** Signed in, Add your first source, Connect Claude Desktop (optional).
 - **Item states:** done, to do, needs attention (repair), dismissed (Claude Desktop only; hidden). While the service is starting and status is unknown, an item shows a muted "Checking…", never a false "to do".
-- Sign-in stays a hard gate; every blocking step shows a visible "Quit Jarvis". The first-Source step also offers "Not now". The API key is not a step: packaged builds bundle a shared key (test phase).
+- Sign-in stays a hard gate; every blocking step shows a visible "Quit Jarvis". The first-Source step also offers "Not now". The API key is not a step: without one, a first-run dialog asks for it before anything else.
 
 ### 4.8 Empty state
 

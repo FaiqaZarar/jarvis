@@ -46,7 +46,7 @@ from jarvis_server.internal import env_config
 
 # DESIGN.md §6 ("Bad or missing API key") and the Settings page's helper.
 _MESSAGE = "Jarvis needs an API key to read your files."
-_HELPER = "Jarvis uses a shared key during testing. You can add your own."
+_HELPER = "Get a key from openrouter.ai. Jarvis saves it on this computer."
 _LATER = "You can also add one later in Settings."
 
 
