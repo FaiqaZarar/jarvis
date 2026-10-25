@@ -418,7 +418,7 @@ def test_daemon_process_shuts_down_when_its_only_client_requests_it(isolated_dae
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     try:
-        deadline = time.monotonic() + 15
+        deadline = time.monotonic() + daemon_client._STARTUP_TIMEOUT_S
         info = None
         while time.monotonic() < deadline:
             info = daemon_client._read_discovery()
@@ -453,7 +453,7 @@ def test_daemon_process_stays_alive_for_another_registered_client(isolated_daemo
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     try:
-        deadline = time.monotonic() + 15
+        deadline = time.monotonic() + daemon_client._STARTUP_TIMEOUT_S
         info = None
         while time.monotonic() < deadline:
             info = daemon_client._read_discovery()
@@ -1116,7 +1116,7 @@ def test_daemon_process_starts_responds_and_stops(isolated_daemon_env):
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     try:
-        deadline = time.monotonic() + 15
+        deadline = time.monotonic() + daemon_client._STARTUP_TIMEOUT_S
         info = None
         while time.monotonic() < deadline:
             info = daemon_client._read_discovery()
@@ -1187,7 +1187,7 @@ def test_daemon_auto_migrates_a_missing_database_on_startup(tmp_path, monkeypatc
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     try:
-        deadline = time.monotonic() + 15
+        deadline = time.monotonic() + daemon_client._STARTUP_TIMEOUT_S
         info = None
         while time.monotonic() < deadline:
             info = daemon_client._read_discovery()
