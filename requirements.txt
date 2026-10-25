@@ -52,7 +52,7 @@ threadpoolctl>=3.6.0
 # transitively (via mcp's own sse-starlette dependency); declared directly
 # now that debug_ui.py imports them itself.
 starlette>=1.6.0
-uvicorn>=0.52.4
+uvicorn>=0.54.0
 
 # Desktop app (docs/desktop-app-DESIGN.md): PySide6, not PyQt6 - permissive
 # LGPL license, a real constraint for a redistributed packaged app.
