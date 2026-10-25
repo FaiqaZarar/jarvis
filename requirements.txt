@@ -37,7 +37,7 @@ google-api-python-client>=2.200.0  # Drive v3 client (files.list / export / get_
 # built and tested against (confirmed via pip freeze, not guessed).
 umap-learn>=0.5.12   # UMAP dimensionality reduction ahead of density clustering
 hdbscan>=0.8.44      # density-based base clustering (spec §6)
-scikit-learn>=1.9.0  # KMeans - used only for the degenerate-HDBSCAN fallback path
+scikit-learn>=1.9.1  # KMeans - used only for the degenerate-HDBSCAN fallback path
 numpy>=2.5.2         # centroid / embedding-matrix maths - was transitive, now imported directly
 # Transitive via umap-learn / hdbscan, pinned here too: these carry compiled
 # extensions (numba/llvmlite) where a silent minor bump has broken builds before.
