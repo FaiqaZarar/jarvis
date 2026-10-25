@@ -21,6 +21,14 @@ Jarvis is an open-source desktop app that reads your local folders and Google Dr
 
 [Getting started](docs/getting-started.md) · [How it works](#how-it-fits-together) · [Documentation](#documentation) · [Privacy](#security-and-privacy) · [Contributing](CONTRIBUTING.md) · [Discussions](https://github.com/FaiqaZarar/jarvis/discussions)
 
+## Watch the demo
+
+<p align="center">
+  <a href="https://www.loom.com/share/531cc4ec6f5c476d83f018cb0373f6b0"><img src="docs/assets/demo-thumbnail.png" alt="Watch the Jarvis demo video" width="640"></a>
+</p>
+
+Installing Jarvis, adding a folder, searching it and browsing its topics, then asking Claude about the files and seeing which ones it used. [Watch on Loom](https://www.loom.com/share/531cc4ec6f5c476d83f018cb0373f6b0).
+
 ## Install
 
 Download the installer for Windows, macOS or Linux from the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page. The current release is a preview and is not code-signed yet. The **[getting started guide](docs/getting-started.md)** walks through installing, adding your [OpenRouter](https://openrouter.ai/keys) API key, your first sync and connecting Claude Desktop.
