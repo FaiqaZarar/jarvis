@@ -313,10 +313,20 @@ def test_default_daemon_home_on_macos(monkeypatch):
     assert env_config.default_daemon_home() == str(expected)
 
 
-def test_default_daemon_home_none_on_unsupported_platform(monkeypatch):
+def test_default_daemon_home_on_linux(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.setattr(env_config.Path, "home", lambda: env_config.Path("/home/someone"))
 
-    assert env_config.default_daemon_home() is None
+    expected = env_config.Path("/home/someone") / ".local" / "share" / "Jarvis" / "Jarvis"
+    assert env_config.default_daemon_home() == str(expected)
+
+
+def test_default_daemon_home_on_linux_follows_xdg_data_home(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("XDG_DATA_HOME", "/data/someone")
+
+    assert env_config.default_daemon_home() == str(env_config.Path("/data/someone") / "Jarvis" / "Jarvis")
 
 
 def test_telemetry_toggle_is_saved_and_switches_telemetry_off(tmp_path, monkeypatch):

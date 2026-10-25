@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1-preview] - Unreleased
+
+### Fixed
+
+- The Linux build failed to start: one database migration used SQL that needs SQLite 3.44, and the build ships SQLite 3.37.
+- On Linux, the library now lives in `~/.local/share/Jarvis/Jarvis` (or under `$XDG_DATA_HOME`). Before, the app tried to write into its own install folder.
+- A settings file with an API key but no `EMBEDDING_MODEL` now uses the default model instead of failing every sync.
+
+### Added
+
+- [Getting started guide](docs/getting-started.md) for the installers.
+- The Linux build is checked to start before it is packaged, and the hosted server's tests run in CI.
+
 ## [0.1.0-preview] - 2026-10-24
 
 First public preview. Installers are not code-signed yet, and you add your own OpenRouter API key on first run.

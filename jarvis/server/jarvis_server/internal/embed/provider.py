@@ -18,6 +18,9 @@ logger = get_logger(__name__)
 # Used only if EMBEDDING_API_BASE isn't set - keeps existing setups working
 # without requiring an immediate .env update.
 DEFAULT_API_BASE = "https://openrouter.ai/api/v1"
+# Same for EMBEDDING_MODEL, matching env_config.DEFAULT_MODEL: a hand-written
+# .env with only a key otherwise fails every sync with a 400.
+DEFAULT_MODEL = "voyageai/voyage-4"
 
 # A real, observed failure mode (a ConnectionResetError mid-TLS-handshake
 # against openrouter.ai during a live ingest): a batch fails not because
@@ -67,12 +70,7 @@ class OpenRouterVoyageEmbedder(Embedder):
                 "EMBEDDING_API_KEY is not set - OpenRouterVoyageEmbedder will "
                 "fail on first real call."
             )
-        self.model = os.environ.get("EMBEDDING_MODEL")
-        if not self.model:
-            logger.warning(
-                "EMBEDDING_MODEL is not set - OpenRouterVoyageEmbedder will "
-                "fail on first real call."
-            )
+        self.model = os.environ.get("EMBEDDING_MODEL") or DEFAULT_MODEL
         self.api_base = os.environ.get("EMBEDDING_API_BASE", DEFAULT_API_BASE)
 
     def embed(self, texts: list[str]) -> list[list[float]]:

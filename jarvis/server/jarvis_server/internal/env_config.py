@@ -99,7 +99,8 @@ def default_daemon_home() -> Optional[str]:
     """The OS-standard per-user app-data directory a packaged install
     (no `.env`, no repo checkout) should default `JARVIS_DAEMON_HOME` to
     - `%APPDATA%\\Jarvis\\Jarvis` on Windows, `~/Library/Application
-    Support/Jarvis` on macOS. Both `jarvis.modules.desktop_app.app` (the
+    Support/Jarvis` on macOS, and `$XDG_DATA_HOME/Jarvis/Jarvis`
+    (`~/.local/share/Jarvis/Jarvis` by default) on Linux. Both `jarvis.modules.desktop_app.app` (the
     GUI) and `jarvis.cmd.desktop_app`'s `--mcp` branch call this, so the
     two ways a packaged daemon can get auto-spawned always agree on
     where `jarvis.db`/the graph file/the daemon discovery file live.
@@ -111,13 +112,17 @@ def default_daemon_home() -> Optional[str]:
     (`~/Library/Application Support/<AppName>`) - not verified against a
     real installed instance the same way the Windows one was, since this
     project's Mac build hasn't shipped yet; worth confirming once it
-    has. Neither platform needs PySide6 importable to compute this."""
+    has. The Linux value is Qt's `AppDataLocation` there, following the
+    XDG base-directory spec. Without it the daemon fell back to its own
+    install folder, which a .deb install leaves root-owned. No platform
+    needs PySide6 importable to compute this."""
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA")
         return str(Path(appdata) / "Jarvis" / "Jarvis") if appdata else None
     if sys.platform == "darwin":
         return str(Path.home() / "Library" / "Application Support" / "Jarvis")
-    return None
+    data_home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return str(Path(data_home) / "Jarvis" / "Jarvis")
 
 
 def _packaged_env_path(daemon_home: Optional[Path] = None) -> Optional[Path]:

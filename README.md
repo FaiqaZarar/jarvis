@@ -19,11 +19,11 @@ Jarvis is an open-source desktop app that reads your local folders and Google Dr
 
 **Your files stay yours.** The library, the search index and the topic tree live in a local database on your machine. The only text that leaves it is what you send to the embedding provider you choose.
 
-[Getting started](#install) · [How it works](#how-it-fits-together) · [Documentation](#documentation) · [Privacy](#security-and-privacy) · [Contributing](CONTRIBUTING.md) · [Discussions](https://github.com/FaiqaZarar/jarvis/discussions)
+[Getting started](docs/getting-started.md) · [How it works](#how-it-fits-together) · [Documentation](#documentation) · [Privacy](#security-and-privacy) · [Contributing](CONTRIBUTING.md) · [Discussions](https://github.com/FaiqaZarar/jarvis/discussions)
 
 ## Install
 
-Download the installer for Windows, macOS or Linux from the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page. The current release is a preview and is not code-signed yet: its release notes explain how to get past the first-run warning. You add your own [OpenRouter](https://openrouter.ai/keys) API key on first launch.
+Download the installer for Windows, macOS or Linux from the [Releases](https://github.com/FaiqaZarar/jarvis/releases) page. The current release is a preview and is not code-signed yet. The **[getting started guide](docs/getting-started.md)** walks through installing, adding your [OpenRouter](https://openrouter.ai/keys) API key, your first sync and connecting Claude Desktop.
 
 ### From source
 
@@ -79,7 +79,7 @@ See the [architecture guide](docs/coding-guides/architecture.md) for the details
 
 - **Local by design.** The background service accepts connections from your own machine only, and rejects requests from web pages.
 - **No hidden uploads.** File contents, file names, paths and search text never leave your computer, apart from the text sent to your embedding provider.
-- **Optional telemetry.** Official builds share anonymous error reports and usage counts, filtered through an allow-list, to help fix problems. Turn it off in **Settings → Privacy** or with `JARVIS_TELEMETRY=0`. Builds from source send nothing unless you configure a key. The full design is in [docs/observability-DESIGN.md](docs/observability-DESIGN.md).
+- **Optional telemetry.** A build can share anonymous error reports and usage counts, filtered through an allow-list, but only if it was built with a telemetry key. The published releases have none, so they send nothing, and neither do builds from source unless you configure a key. Where it is on, turn it off in **Settings → Privacy** or with `JARVIS_TELEMETRY=0`. The full design is in [docs/observability-DESIGN.md](docs/observability-DESIGN.md).
 - **Removing is safe.** Removing a source takes it out of the library; the files on disk or in Drive are never touched.
 
 Found a vulnerability? Please report it privately; see [SECURITY.md](SECURITY.md).
@@ -88,6 +88,7 @@ Found a vulnerability? Please report it privately; see [SECURITY.md](SECURITY.md
 
 | Goal | Start here |
 | --- | --- |
+| Install and use the app | [Getting started](docs/getting-started.md) |
 | Install and run from source | [Install](#install) · [Development guide](docs/development.md) |
 | Connect Claude Desktop by hand | [MCP server](docs/development.md#mcp-server) |
 | Use Google Drive from source | [Google Drive](docs/development.md#google-drive) |

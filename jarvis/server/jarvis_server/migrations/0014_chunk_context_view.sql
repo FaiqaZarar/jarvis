@@ -16,6 +16,10 @@
 -- (organize/config.py's ROOT_TOPIC_ID) - excluded from the path the same
 -- way _topic_breadcrumb() excludes it, since it's a wrapper node hidden
 -- from the MCP surface everywhere else, not a real topic.
+--
+-- The path is ordered in an inner query rather than with
+-- group_concat(... ORDER BY ...), which needs SQLite 3.44+: the Linux
+-- build ships the SQLite of Ubuntu 22.04 (3.37), and failed to start on it.
 CREATE VIEW IF NOT EXISTS chunk_context AS
 SELECT
     c.chunk_id,
@@ -35,10 +39,14 @@ SELECT
     t.id                     AS topic_id,
     t.name                   AS topic_name,
     (
-        SELECT group_concat(tp.name, ' > ' ORDER BY je.key)
-        FROM json_each(t.ancestor_path) je
-        JOIN topics tp ON tp.id = je.value
-        WHERE je.value != '40000000-0000-4000-8000-000000000000'
+        SELECT group_concat(name, ' > ')
+        FROM (
+            SELECT tp.name AS name
+            FROM json_each(t.ancestor_path) je
+            JOIN topics tp ON tp.id = je.value
+            WHERE je.value != '40000000-0000-4000-8000-000000000000'
+            ORDER BY je.key
+        )
     ) AS topic_path
 FROM chunks c
 JOIN documents d ON d.content_hash = c.content_hash

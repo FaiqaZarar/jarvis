@@ -18,11 +18,13 @@
 
 ## First run
 
+The [getting started guide](https://github.com/FaiqaZarar/jarvis/blob/main/docs/getting-started.md) covers every step below in more detail, plus troubleshooting.
+
 1. **Add your own API key.** Jarvis asks for an [OpenRouter](https://openrouter.ai/keys) key on first launch. It is used to embed your text for search and to name topics. Your key stays on your machine; only the text being embedded is sent to OpenRouter.
 2. **Add a source.** Local folders work out of the box.
 3. **Connect Claude Desktop** from Jarvis's setup steps, restart Claude, then ask it about your files.
 
-**Google Drive** needs your own Google OAuth client in this preview. Follow the [Google Drive setup](https://github.com/FaiqaZarar/jarvis/blob/main/docs/development.md#google-drive) and put the two values in the `.env` file in your Jarvis library folder (Windows: `%APPDATA%\Jarvis\Jarvis`, macOS: `~/Library/Application Support/Jarvis`).
+**Google Drive** needs your own Google OAuth client in this preview; see [Google Drive](https://github.com/FaiqaZarar/jarvis/blob/main/docs/getting-started.md#google-drive-optional) in the guide.
 
 ## What's in it
 

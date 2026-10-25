@@ -140,6 +140,10 @@ jobs:
         working-directory: packaging
         run: pyinstaller --noconfirm jarvis_desktop_linux.spec
 
+      - name: Check the built app starts
+        working-directory: packaging
+        run: bash smoke_test_daemon.sh dist/jarvis_desktop/jarvis_desktop
+
       - name: Package into a .deb
         working-directory: packaging
         run: bash package_deb.sh "${{ needs.check-version.outputs.tag }}"

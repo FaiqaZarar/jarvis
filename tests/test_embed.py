@@ -349,6 +349,22 @@ def test_auth_failure_raises_actionable_error_without_hiding_the_original(monkey
     assert "Unauthorized" in str(excinfo.value.__cause__)
 
 
+def test_model_defaults_when_only_a_key_is_configured(monkeypatch):
+    monkeypatch.setenv("EMBEDDING_API_KEY", "sk-ok")
+    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+    sent = {}
+
+    def _fake_post(url, json=None, **kwargs):
+        sent.update(json)
+        return _FakeResponse(500)
+
+    monkeypatch.setattr(requests, "post", _fake_post)
+
+    with pytest.raises(requests.HTTPError):
+        OpenRouterVoyageEmbedder().embed(["some text"])
+    assert sent["model"] == "voyageai/voyage-4"
+
+
 def test_non_auth_http_error_is_re_raised_unchanged(monkeypatch):
     monkeypatch.setenv("EMBEDDING_API_KEY", "sk-ok")
     monkeypatch.setenv("EMBEDDING_MODEL", "voyageai/voyage-4")
