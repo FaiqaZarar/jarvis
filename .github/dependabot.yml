@@ -5,11 +5,19 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Windows wheels from 0.19 on can't load their C library (checked up
+      # to 0.21.2); see the pin in requirements.txt.
+      - dependency-name: ladybug
+        versions: [">=0.19"]
   - package-ecosystem: pip
     directory: "/jarvis/server"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: ladybug
+        versions: [">=0.19"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
