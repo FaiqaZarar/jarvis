@@ -4,7 +4,7 @@ python-dotenv>=1.0
 
 # J-04: local filesystem connector
 pathspec>=0.12          # .gitignore-style pattern matching
-charset-normalizer>=3.0  # encoding-detection fallback when UTF-8 decode fails
+charset-normalizer>=3.5.2  # encoding-detection fallback when UTF-8 decode fails
 markitdown[docx,pdf]>=0.0.1a2  # .docx / clean-PDF -> Markdown conversion (spec §8.2, §9) - the
                                 # base package alone cannot actually convert either format; it
                                 # throws MissingDependencyException without these extras
