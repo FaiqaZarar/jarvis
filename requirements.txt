@@ -61,7 +61,7 @@ uvicorn>=0.52.4
 # tests/test_frozen_daemon_spawn.py / test_desktop_app_daemon_worker.py /
 # test_desktop_app_views.py pass against exactly this version) - not a
 # guessed minimum.
-PySide6==6.11.2
+PySide6==6.12.0
 pytest-qt>=4.5.0  # QApplication/qtbot fixtures for testing Qt widgets and signals
 
 # Telemetry (docs/observability-DESIGN.md): traces over OTLP + PostHog
