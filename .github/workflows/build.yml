@@ -96,7 +96,7 @@ jobs:
         working-directory: packaging
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ inputs.version }} jarvis_installer.iss'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jarvis-windows
           path: packaging/dist/JarvisSetup.exe
@@ -148,7 +148,7 @@ jobs:
         working-directory: packaging
         run: bash package_deb.sh "${{ needs.check-version.outputs.tag }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jarvis-linux
           path: packaging/dist/Jarvis.deb
@@ -212,7 +212,7 @@ jobs:
             dist/Jarvis.dmg \
             dist/Jarvis.app
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jarvis-macos
           path: packaging/dist/Jarvis.dmg
