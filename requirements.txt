@@ -10,7 +10,7 @@ markitdown[docx,pdf]>=0.0.1a2  # .docx / clean-PDF -> Markdown conversion (spec 
                                 # throws MissingDependencyException without these extras
 
 # J-05: structure-aware chunking
-tiktoken>=0.7  # BPE token counting for the chunk-size target. Offline only after a
+tiktoken>=0.14.0  # BPE token counting for the chunk-size target. Offline only after a
                # successful first-run fetch of its vocab file from
                # openaipublic.blob.core.windows.net - a restricted-egress environment
                # will fail on first use.
