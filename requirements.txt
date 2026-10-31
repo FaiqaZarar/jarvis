@@ -1,5 +1,5 @@
 # Baseline. Grow this ticket-by-ticket rather than front-loading unused deps.
-pytest>=9.1.1
+pytest>=9.2.0
 python-dotenv>=1.0
 
 # J-04: local filesystem connector
