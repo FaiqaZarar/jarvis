@@ -20,7 +20,7 @@ ladybug>=0.18,<0.19  # pinned below 0.19: Windows wheels 0.19+ are missing requi
                      # a known packaging bug
 
 # J-06: embedding + indexing
-requests>=2.31  # OpenRouter embeddings HTTP calls - already present transitively
+requests>=2.34.2  # OpenRouter embeddings HTTP calls - already present transitively
                 # (via markitdown), now a direct dependency
 sqlite-vec>=0.1.9  # vector storage/KNN search, loaded as a SQLite extension
 
