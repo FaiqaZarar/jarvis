@@ -31,7 +31,7 @@ mcp>=2.1.1  # Model Context Protocol SDK - search.py imports
 
 # J-11: Google Drive connector. OAuth (Testing mode, drive.readonly) + Drive v3.
 google-auth-oauthlib>=1.4.1   # InstalledAppFlow.run_local_server loopback OAuth
-google-api-python-client>=2.200.0  # Drive v3 client (files.list / export / get_media)
+google-api-python-client>=2.201.0  # Drive v3 client (files.list / export / get_media)
 
 # J-08: organize / clustering engine. Versions are the ones this ticket was
 # built and tested against (confirmed via pip freeze, not guessed).
